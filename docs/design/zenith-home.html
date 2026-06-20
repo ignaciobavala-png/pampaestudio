@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="theme-color" content="#EBEBE8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Zenith">
+<title>Zenith Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300;1,6..72,400&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --p:#EBEBE8;--s:#FFF;--s2:#F6F6F5;--s3:#EFEEEC;
+  --ink:#1A191F;--ink2:#76747F;--ink3:#AAA8B2;
+  --ln:rgba(26,25,31,.09);--ln2:rgba(26,25,31,.14);
+  --v:#5B4BE0;--v2:#7C6FF2;--vs:#ECE9FC;--vp:#4B3CD2;
+  --cc:#DBDAD6;
+  --serif:'Newsreader',Georgia,serif;
+  --sans:'Hanken Grotesk',-apple-system,sans-serif;
+  --r:22px;--rsm:14px;
+}
+html,body{height:100%}
+body{font-family:var(--sans);background:var(--p);color:var(--ink);-webkit-font-smoothing:antialiased}
+.canvas{min-height:100dvh;display:flex;align-items:center;justify-content:center}
+.app{position:relative;width:100%;max-width:462px;height:100dvh;background:var(--s);display:flex;flex-direction:column;overflow:hidden}
+@media(min-width:600px){.canvas{padding:24px}.app{height:min(94dvh,884px);border-radius:34px;box-shadow:0 2px 60px rgba(26,25,31,.12);border:1px solid var(--ln)}}
+
+/* topbar */
+.topbar{flex-shrink:0;padding:max(16px,env(safe-area-inset-top)) 22px 12px;display:flex;align-items:flex-start;justify-content:space-between}
+.brand{font-family:var(--serif);font-size:21px;font-weight:400;letter-spacing:-.01em;line-height:1}
+.brand-sub{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);font-weight:500;margin-top:1px}
+.brand .dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:linear-gradient(135deg,#D7D9E0,#F4F5F8,#C2C4CE);margin-left:2px;vertical-align:middle}
+.top-cta{font-size:13px;font-weight:600;color:var(--v);background:var(--vs);border:none;cursor:pointer;padding:7px 14px;border-radius:100px;transition:background .15s}
+.top-cta:hover{background:#e0dbf9}
+.top-cta.logged{color:var(--ink2);background:var(--s2);font-weight:500}
+
+/* view + panels */
+.view{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.view::-webkit-scrollbar{width:0}
+.panel{display:none;padding-bottom:24px}
+.panel.active{display:block}
+
+/* funnel steps */
+.fsteps{display:flex;align-items:center;justify-content:center;gap:0;padding:14px 22px 6px}
+.fstep{display:flex;flex-direction:column;align-items:center;gap:3px}
+.fdot{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;transition:all .2s}
+.fdot.done{background:var(--v);color:#fff}
+.fdot.cur{background:var(--ink);color:#fff}
+.fdot.nxt{background:var(--s3);color:var(--ink3)}
+.flbl{font-size:10px;font-weight:500;white-space:nowrap}
+.flbl.done,.flbl.cur{color:var(--ink)}
+.flbl.nxt{color:var(--ink3)}
+.fline{width:28px;height:2px;background:var(--cc);margin:0 2px 14px;border-radius:1px;transition:background .2s}
+.fline.done{background:var(--v)}
+
+/* section */
+.sec-line{padding:10px 22px 4px;display:flex;align-items:baseline;justify-content:space-between}
+.sec-h{font-family:var(--serif);font-size:27px;font-weight:400;letter-spacing:-.015em}
+.sec-meta{font-size:12px;color:var(--ink2)}
+
+/* packs */
+.packs{padding:6px 16px 4px;display:flex;flex-direction:column;gap:9px}
+.pk{border:1px solid var(--ln);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;gap:12px;background:var(--s);cursor:pointer;transition:border-color .16s,box-shadow .16s;position:relative}
+.pk:hover{border-color:var(--ln2)}
+.pk.feat{background:var(--ink);color:#fff;border-color:var(--ink)}
+.pk.sel{border-color:var(--v);box-shadow:0 0 0 2px var(--vs)}
+.pk.feat.sel{border-color:var(--v2);box-shadow:0 0 0 2px var(--vs)}
+.pk-chk{position:absolute;top:16px;right:16px;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--ln2);display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .16s}
+.pk.sel .pk-chk{background:var(--v);border-color:var(--v);color:#fff}
+.pk.feat .pk-chk{border-color:rgba(255,255,255,.3)}
+.pk.feat.sel .pk-chk{background:var(--v2);border-color:var(--v2);color:#fff}
+.pk-ey{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);font-weight:600}
+.pk.feat .pk-ey{color:var(--v2)}
+.pk-name{font-family:var(--serif);font-size:22px;font-weight:400;padding-right:28px}
+.pk-desc{font-size:12.5px;color:var(--ink2);line-height:1.5}
+.pk.feat .pk-desc{color:rgba(255,255,255,.6)}
+.pk-feats{display:flex;flex-direction:column;gap:4px}
+.pkf{font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:7px}
+.pkf::before{content:'—';color:var(--ink3)}
+.pk.feat .pkf{color:rgba(255,255,255,.65)}
+.pk.feat .pkf::before{color:rgba(255,255,255,.3)}
+.pk-bot{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pk-price{font-family:var(--serif);font-size:26px}
+.pk-per{font-size:11px;color:var(--ink3);font-weight:400;margin-left:3px}
+.pk.feat .pk-per{color:rgba(255,255,255,.45)}
+.pk-btn{padding:11px 18px;border-radius:12px;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;transition:all .16s;border:1px solid var(--ln2);background:var(--s3);color:var(--ink)}
+.pk-btn:hover{background:var(--cc)}
+.pk.feat .pk-btn{background:#fff;color:var(--ink);border-color:transparent}
+.pk.sel .pk-btn{background:var(--v);color:#fff;border-color:transparent}
+.pk.feat.sel .pk-btn{background:var(--v2);color:#fff}
+.sel-banner{margin:8px 16px 2px;padding:12px 14px;border-radius:var(--rsm);background:var(--s2);border:1px solid var(--ln);display:flex;align-items:center;justify-content:space-between}
+.sb-l{display:flex;align-items:center;gap:9px}
+.sb-chk{width:22px;height:22px;border-radius:50%;background:var(--v);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sb-name{font-size:13px;font-weight:600}
+.sb-price{font-size:12px;color:var(--ink2)}
+.sb-change{font-size:12px;color:var(--v);background:transparent;border:none;cursor:pointer;font-weight:500}
+.next-btn{width:100%;padding:14px;border-radius:14px;background:var(--v);color:#fff;border:none;font-family:var(--sans);font-size:14.5px;font-weight:700;cursor:pointer;margin-top:4px;transition:background .16s;box-shadow:inset 0 1px 0 rgba(255,255,255,.22)}
+.next-btn:hover{background:var(--vp)}
+
+/* payment sheet */
+.pay-ico{width:48px;height:48px;border-radius:14px;background:var(--vs);display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 14px}
+.pay-title{font-family:var(--serif);font-size:24px;font-weight:400;text-align:center;letter-spacing:-.01em;margin-bottom:6px}
+.pay-sub{font-size:13px;color:var(--ink2);text-align:center;line-height:1.5;margin-bottom:20px}
+.pay-summary{background:var(--s2);border-radius:var(--rsm);padding:14px 16px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center}
+.ps-name{font-size:14px;font-weight:600}
+.ps-price{font-family:var(--serif);font-size:22px}
+.pay-methods{display:flex;flex-direction:column;gap:9px;margin-bottom:16px}
+.pay-method{padding:14px 16px;border-radius:14px;border:1px solid var(--ln2);background:var(--s);display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .16s}
+.pay-method:hover{border-color:var(--v);background:var(--vs)}
+.pay-method.sel{border-color:var(--v);background:var(--vs)}
+.pm-ico{font-size:20px;width:32px;text-align:center;flex-shrink:0}
+.pm-label{font-size:13.5px;font-weight:500}
+.pm-sub{font-size:11px;color:var(--ink2)}
+.pm-radio{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--ln2);margin-left:auto;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .16s}
+.pay-method.sel .pm-radio{border-color:var(--v);background:var(--v)}
+.pay-method.sel .pm-radio::after{content:'';width:6px;height:6px;border-radius:50%;background:#fff}
+.card-fields{padding:14px 16px;border:1px solid var(--ln2);border-radius:14px;margin-bottom:14px;display:none;flex-direction:column;gap:10px}
+.card-fields.show{display:flex}
+.cf-row{display:flex;gap:9px}
+.cinput{flex:1;padding:12px 13px;border-radius:11px;border:1px solid var(--ln2);background:var(--s2);font-family:var(--sans);font-size:14px;color:var(--ink);outline:none;transition:border-color .15s}
+.cinput::placeholder{color:var(--ink3)}
+.cinput:focus{border-color:var(--v);background:var(--s)}
+.pay-cta{width:100%;padding:15px;border-radius:14px;background:var(--v);color:#fff;border:none;font-family:var(--sans);font-size:15px;font-weight:600;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.22);transition:background .16s}
+.pay-cta:hover{background:var(--vp)}
+
+/* clases */
+.nopack{margin:8px 16px;padding:16px;border-radius:var(--rsm);background:var(--vs);border:1px solid rgba(91,75,224,.15)}
+.np-t{font-size:13.5px;font-weight:600;color:var(--v);margin-bottom:5px}
+.np-p{font-size:12.5px;color:var(--v2);line-height:1.5;margin-bottom:12px}
+.np-btn{padding:10px 20px;border-radius:10px;background:var(--v);color:#fff;border:none;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer}
+.filters{display:flex;gap:7px;padding:14px 22px 4px;overflow-x:auto;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;font-size:12.5px;font-weight:500;padding:8px 15px;border-radius:100px;border:1px solid var(--ln2);background:transparent;color:var(--ink2);cursor:pointer;transition:all .16s;white-space:nowrap}
+.chip.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+.daystrip{display:flex;gap:8px;padding:16px 22px 10px;overflow-x:auto;scrollbar-width:none}
+.daystrip::-webkit-scrollbar{display:none}
+.day{flex-shrink:0;width:50px;display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 0;border-radius:16px;border:1px solid transparent;cursor:pointer;transition:all .16s}
+.day:hover{background:var(--s2)}
+.day-wd{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);font-weight:600}
+.day-n{font-family:var(--serif);font-size:21px;font-weight:400;line-height:1;color:var(--ink2)}
+.day-dot{width:4px;height:4px;border-radius:50%;background:var(--cc)}
+.day.active{background:var(--ink);border-color:var(--ink)}
+.day.active .day-wd{color:rgba(255,255,255,.55)}
+.day.active .day-n{color:#fff}
+.day.active .day-dot{background:var(--v2)}
+.day.today:not(.active) .day-n{color:var(--v)}
+.day-lbl{padding:8px 22px 2px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);font-weight:600}
+.classes{padding:6px 16px 4px;display:flex;flex-direction:column;gap:8px}
+.cc{position:relative;background:var(--s);border:1px solid var(--ln);border-radius:var(--r);padding:16px;cursor:pointer;transition:border-color .16s,transform .14s;display:flex;gap:14px;align-items:stretch}
+.cc:active{transform:scale(.99)}
+.cc:hover{border-color:var(--ln2)}
+.cc.next{box-shadow:0 0 0 1.5px var(--v);border-color:transparent}
+.cc.locked{opacity:.55;cursor:not-allowed}
+.cc-time{flex-shrink:0;width:54px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--ln);padding-right:14px}
+.cc-h{font-family:var(--serif);font-size:20px;line-height:1}
+.cc-end{font-size:11px;color:var(--ink3);margin-top:3px}
+.cc-mid{flex:1;min-width:0}
+.cc-name{font-family:var(--serif);font-size:18px;line-height:1.15}
+.cc-teacher{font-size:12.5px;color:var(--ink2);margin-top:2px}
+.cc-bar-row{display:flex;align-items:center;gap:8px;margin-top:7px}
+.cc-meter{flex:1;max-width:84px;height:3px;border-radius:2px;background:var(--cc);overflow:hidden}
+.cc-fill{height:100%;border-radius:2px;background:var(--v)}
+.cc-spots{font-size:11.5px;color:var(--ink2);font-weight:500;white-space:nowrap}
+.cc-spots.wl{color:var(--v)}
+.cc-tag{position:absolute;top:-1px;right:14px;transform:translateY(-50%);font-size:9.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);background:linear-gradient(135deg,#D7D9E0,#F4F5F8,#C2C4CE);padding:3px 9px;border-radius:100px}
+.cc-lock{position:absolute;top:14px;right:14px;font-size:14px;color:var(--ink3)}
+.cc-chev{flex-shrink:0;align-self:center;color:var(--ink3);font-size:16px}
+.rest{padding:60px 30px;text-align:center}
+.rest-m{font-family:var(--serif);font-style:italic;font-size:30px;color:var(--cc)}
+.rest-t{font-size:13px;color:var(--ink2);line-height:1.55;margin-top:8px}
+
+/* class sheet */
+.cs-ey{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);font-weight:600;margin-bottom:8px}
+.cs-name{font-family:var(--serif);font-size:28px;font-weight:400;line-height:1.08;letter-spacing:-.02em;margin-bottom:12px}
+.cs-rows{border-top:1px solid var(--ln);margin:14px 0}
+.cs-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--ln)}
+.cs-k{font-size:13px;color:var(--ink2)}
+.cs-v{font-size:14px;font-weight:500}
+.cs-avail{background:var(--s2);border-radius:var(--rsm);padding:14px 16px;margin:14px 0;display:flex;align-items:center;gap:13px}
+.cs-anum{font-family:var(--serif);font-size:32px;line-height:1}
+.cs-anum span{font-size:16px;color:var(--ink3)}
+.cs-atxt{font-size:13px;color:var(--ink2);line-height:1.4}
+.cs-atxt b{color:var(--v);font-weight:600}
+.cs-need{background:var(--vs);border-radius:var(--rsm);padding:12px 14px;margin:12px 0;display:flex;align-items:center;gap:9px}
+.cs-need-t{font-size:12.5px;color:var(--v);line-height:1.4}
+.cs-need-t b{font-weight:600}
+.cs-desc{font-size:13.5px;color:var(--ink2);line-height:1.6;margin-bottom:16px}
+.cs-cta{width:100%;padding:15px;border-radius:14px;background:var(--v);color:#fff;border:none;font-family:var(--sans);font-size:15px;font-weight:600;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.22);transition:background .16s}
+.cs-cta:hover{background:var(--vp)}
+.cs-cta.dark{background:var(--ink)}
+
+/* confirmation sheet */
+.conf-ico{width:56px;height:56px;border-radius:18px;background:var(--vs);display:flex;align-items:center;justify-content:center;font-size:26px;margin:6px auto 14px}
+.conf-title{font-family:var(--serif);font-size:26px;font-weight:400;text-align:center;letter-spacing:-.01em;margin-bottom:6px}
+.conf-sub{font-size:13px;color:var(--ink2);text-align:center;line-height:1.5;margin-bottom:18px}
+.conf-card{background:var(--s2);border-radius:var(--r);padding:16px;margin-bottom:16px;border:1px solid var(--ln)}
+.conf-class{font-family:var(--serif);font-size:20px;margin-bottom:8px}
+.conf-rows{display:flex;flex-direction:column;gap:5px}
+.conf-row{display:flex;justify-content:space-between;font-size:13px}
+.conf-row span:first-child{color:var(--ink2)}
+.conf-actions{display:flex;flex-direction:column;gap:9px;margin-bottom:4px}
+.cal-btn{padding:13px;border-radius:13px;border:1px solid var(--ln2);background:var(--s);font-family:var(--sans);font-size:13.5px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .16s;color:var(--ink)}
+.cal-btn:hover{background:var(--s3);border-color:var(--ln2)}
+.conf-close{width:100%;padding:13px;border-radius:13px;background:var(--v);color:#fff;border:none;font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;transition:background .16s}
+.conf-close:hover{background:var(--vp)}
+
+/* waitlist sheet */
+.wl-ico{font-size:28px;text-align:center;margin:6px auto 12px}
+.wl-title{font-family:var(--serif);font-size:24px;text-align:center;margin-bottom:6px}
+.wl-sub{font-size:13px;color:var(--ink2);text-align:center;line-height:1.5;margin-bottom:18px}
+.wl-pos-card{background:var(--vs);border-radius:var(--r);padding:20px;margin-bottom:16px;text-align:center}
+.wl-pos-n{font-family:var(--serif);font-size:64px;color:var(--v);line-height:1}
+.wl-pos-lbl{font-size:13px;color:var(--v2);margin-top:4px}
+.wl-info-rows{display:flex;flex-direction:column;gap:0;border-top:1px solid var(--ln);margin-bottom:16px}
+.wl-row{display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--ln);font-size:13px}
+.wl-row span:first-child{color:var(--ink2)}
+.wl-notif{padding:13px;border-radius:13px;border:1px solid var(--ln2);background:var(--s);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:9px;transition:all .16s}
+.wl-notif:hover{background:var(--s3)}
+.wl-leave{width:100%;padding:12px;border-radius:12px;background:transparent;border:1px solid var(--ln2);color:var(--ink2);font-family:var(--sans);font-size:13px;cursor:pointer;transition:all .15s}
+.wl-leave:hover{color:var(--ink);border-color:var(--ink2)}
+
+/* agenda / calendar */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;padding:10px 22px 4px}
+.cal-month{font-family:var(--serif);font-size:22px;font-weight:400;letter-spacing:-.01em}
+.cal-arr{width:32px;height:32px;border-radius:10px;border:1px solid var(--ln2);background:var(--s);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.cal-arr:hover{background:var(--s3)}
+.cal-grid{padding:6px 22px 2px}
+.cal-dows{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px}
+.cal-dow{font-size:10px;text-align:center;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);font-weight:600;padding:4px 0}
+.cal-days{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cday{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:11px;cursor:pointer;transition:all .12s;position:relative;font-size:13px;color:var(--ink2)}
+.cday:hover{background:var(--s2)}
+.cday.other{color:var(--ink3);opacity:.4}
+.cday.today{background:var(--ink);color:#fff;font-weight:600}
+.cday.has::after{content:'';position:absolute;bottom:4px;width:4px;height:4px;border-radius:50%;background:var(--v)}
+.cday.today.has::after{background:var(--v2)}
+.cday.wl-day::after{background:#C8960A}
+.cday.sel:not(.today){background:var(--vs);color:var(--v);font-weight:600}
+.ag-divider{height:1px;background:var(--ln);margin:10px 22px}
+.ag-lbl{padding:10px 22px 6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);font-weight:600}
+.ag-credits{margin:0 16px 8px;padding:13px 16px;background:var(--s);border:1px solid var(--ln);border-radius:var(--rsm);display:flex;align-items:center;justify-content:space-between}
+.agc-l{font-size:12px;color:var(--ink2)}
+.agc-v{font-family:var(--serif);font-size:22px}
+.agc-sub{font-size:11px;color:var(--ink3);margin-top:1px}
+.ag-list{padding:4px 16px;display:flex;flex-direction:column;gap:8px}
+.ag-item{border:1px solid var(--ln);border-radius:var(--r);padding:14px 15px;display:flex;gap:12px;align-items:center;background:var(--s);cursor:pointer;transition:border-color .15s}
+.ag-item:hover{border-color:var(--ln2)}
+.ag-date{flex-shrink:0;width:44px;text-align:center;border-right:1px solid var(--ln);padding-right:12px}
+.ag-d{font-family:var(--serif);font-size:21px;line-height:1}
+.ag-m{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);font-weight:600;margin-top:2px}
+.ag-info{flex:1}
+.ag-name{font-family:var(--serif);font-size:16px}
+.ag-meta{font-size:12px;color:var(--ink2);margin-top:2px}
+.ag-st{font-size:11px;font-weight:600;padding:4px 9px;border-radius:100px;white-space:nowrap;flex-shrink:0}
+.s-ok{color:var(--v);background:var(--vs)}
+.s-wl{color:#7A6010;background:#F5EDCC}
+.ag-empty{padding:40px 30px;text-align:center}
+.ag-empty-m{font-family:var(--serif);font-style:italic;font-size:24px;color:var(--cc)}
+.ag-empty-t{font-size:13px;color:var(--ink2);margin-top:8px;line-height:1.5}
+.ag-empty-btn{margin-top:16px;padding:11px 24px;border-radius:12px;background:var(--v);color:#fff;border:none;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer}
+
+/* gates */
+.gate{padding:56px 30px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px}
+.gate-ico{width:54px;height:54px;border-radius:16px;background:var(--vs);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:10px}
+.gate-h{font-family:var(--serif);font-size:24px;font-weight:400;letter-spacing:-.01em}
+.gate-p{font-size:13.5px;color:var(--ink2);line-height:1.55;max-width:260px;margin-bottom:14px}
+.gate-btn{padding:13px 30px;border-radius:13px;background:var(--v);color:#fff;border:none;font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;transition:background .16s}
+.gate-btn:hover{background:var(--vp)}
+
+/* profile */
+.prof-head{padding:20px 22px 14px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--ln)}
+.prof-av{width:54px;height:54px;border-radius:50%;background:var(--vs);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:20px;color:var(--v);flex-shrink:0}
+.prof-name{font-family:var(--serif);font-size:22px;font-weight:400;letter-spacing:-.01em}
+.prof-email{font-size:13px;color:var(--ink2);margin-top:2px}
+.prof-sections{padding:10px 16px;display:flex;flex-direction:column;gap:6px}
+.prof-card{background:var(--s);border:1px solid var(--ln);border-radius:var(--r);overflow:hidden}
+.prof-card-title{padding:13px 16px;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);font-weight:600;border-bottom:1px solid var(--ln)}
+.prof-row{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--ln);cursor:pointer;transition:background .13s}
+.prof-row:last-child{border-bottom:none}
+.prof-row:hover{background:var(--s2)}
+.pr-l{font-size:14px}
+.pr-r{font-size:13px;color:var(--ink2);display:flex;align-items:center;gap:6px}
+.pr-chev{color:var(--ink3);font-size:14px}
+.prof-badge{font-size:10px;font-weight:600;padding:3px 8px;border-radius:100px;background:var(--vs);color:var(--v)}
+.prof-logout{margin:8px 16px;width:calc(100% - 32px);padding:12px;border-radius:12px;background:transparent;border:1px solid var(--ln2);color:var(--ink2);font-family:var(--sans);font-size:13.5px;font-weight:500;cursor:pointer;transition:all .15s}
+.prof-logout:hover{color:var(--ink);border-color:var(--ink2)}
+
+/* login sheet */
+.ls-title{font-family:var(--serif);font-size:28px;font-weight:400;letter-spacing:-.02em;margin-bottom:6px}
+.ls-sub{font-size:14px;color:var(--ink2);line-height:1.5;margin-bottom:20px}
+.ls-btn{width:100%;padding:14px;border-radius:13px;font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:10px;border:1px solid var(--ln2);background:var(--s);color:var(--ink);transition:all .16s}
+.ls-btn.apple{background:var(--ink);color:#fff;border-color:var(--ink)}
+.ls-btn:hover{border-color:var(--ink3)}
+.ls-div{display:flex;align-items:center;gap:12px;margin:12px 0;color:var(--ink3);font-size:12px}
+.ls-div::before,.ls-div::after{content:'';flex:1;height:1px;background:var(--ln)}
+.ls-in{width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--ln2);background:var(--s2);font-family:var(--sans);font-size:14px;color:var(--ink);outline:none;margin-bottom:10px;transition:border-color .15s}
+.ls-in::placeholder{color:var(--ink3)}
+.ls-in:focus{border-color:var(--v);background:var(--s)}
+.ls-sub-btn{width:100%;padding:14px;border-radius:13px;background:var(--v);color:#fff;border:none;font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;transition:background .16s}
+.ls-sub-btn:hover{background:var(--vp)}
+.ls-legal{font-size:11px;color:var(--ink3);text-align:center;line-height:1.5;margin-top:14px}
+.ls-staff{text-align:center;margin-top:10px}
+.ls-staff a{font-size:12px;color:var(--ink3);text-decoration:none}
+
+/* overlay + sheets */
+.overlay{position:absolute;inset:0;z-index:20;background:rgba(20,18,28,.42);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .25s}
+.overlay.show{opacity:1;pointer-events:all}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:21;background:var(--s);border-radius:26px 26px 0 0;transform:translateY(101%);transition:transform .34s cubic-bezier(.32,.72,0,1);max-height:92%;display:flex;flex-direction:column;box-shadow:0 -10px 40px rgba(26,25,31,.14);padding-bottom:env(safe-area-inset-bottom)}
+.sheet.open{transform:translateY(0)}
+.handle{width:36px;height:4px;border-radius:3px;background:var(--cc);margin:11px auto 4px;cursor:pointer;flex-shrink:0}
+.sheet-body{overflow-y:auto;padding:10px 24px 24px}
+
+/* bottom nav */
+.botnav{flex-shrink:0;display:flex;border-top:1px solid var(--ln);background:rgba(255,255,255,.88);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);padding-bottom:env(safe-area-inset-bottom)}
+.ni{flex:1;background:transparent;border:none;cursor:pointer;padding:11px 0 10px;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--ink3);transition:color .16s;position:relative}
+.ni svg{width:21px;height:21px;stroke:currentColor;stroke-width:1.6;fill:none}
+.ni-lbl{font-size:10px;font-weight:500}
+.ni.active{color:var(--ink)}
+.ni.enter{color:var(--v)}
+.nbadge{position:absolute;top:7px;left:50%;margin-left:4px;width:6px;height:6px;border-radius:50%;background:var(--v);display:none}
+.ni.pulse .nbadge{display:block;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.8)}}
+
+/* toast */
+.toasts{position:absolute;left:0;right:0;bottom:78px;z-index:40;display:flex;flex-direction:column;align-items:center;gap:7px;pointer-events:none;padding:0 22px}
+.toast{background:var(--ink);color:#fff;border-radius:13px;padding:11px 16px;font-size:13px;font-weight:500;box-shadow:0 8px 26px rgba(26,25,31,.22);display:flex;align-items:center;gap:9px;transform:translateY(18px);opacity:0;transition:all .26s cubic-bezier(.32,.72,0,1);max-width:100%}
+.toast.show{transform:translateY(0);opacity:1}
+.toast .tk{width:6px;height:6px;border-radius:50%;background:var(--v2);flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="canvas"><div class="app" id="app">
+
+<header class="topbar">
+  <div>
+    <div class="brand">Zenith<span class="dot"></span></div>
+    <div class="brand-sub">Palermo</div>
+  </div>
+  <button class="top-cta" id="topCta" onclick="openLogin()">Entrar</button>
+</header>
+
+<main class="view" id="view">
+
+  <!-- PACKS -->
+  <section class="panel active" id="p-packs">
+    <div class="fsteps" id="fsteps">
+      <div class="fstep"><div class="fdot cur" id="fd1">1</div><div class="flbl cur" id="fl1">Pack</div></div>
+      <div class="fline" id="fln1"></div>
+      <div class="fstep"><div class="fdot nxt" id="fd2">2</div><div class="flbl nxt" id="fl2">Pago</div></div>
+      <div class="fline" id="fln2"></div>
+      <div class="fstep"><div class="fdot nxt" id="fd3">3</div><div class="flbl nxt" id="fl3">Clases</div></div>
+      <div class="fline" id="fln3"></div>
+      <div class="fstep"><div class="fdot nxt" id="fd4">4</div><div class="flbl nxt" id="fl4">Reserva</div></div>
+    </div>
+    <div class="sec-line"><div class="sec-h">Elegí tu pack</div><div class="sec-meta">Sin permanencia</div></div>
+    <div id="selBanner" style="display:none"></div>
+    <div class="packs" id="packsList"></div>
+    <div style="padding:8px 16px 4px"><button class="next-btn" id="packNext" style="display:none" onclick="goPay()">Continuar al pago →</button></div>
+  </section>
+
+  <!-- CLASES -->
+  <section class="panel" id="p-clases">
+    <div class="sec-line"><div class="sec-h">Clases</div><div class="sec-meta" id="clases-date">Vie 13 jun</div></div>
+    <div id="nopack-gate" style="display:none"><div class="nopack"><div class="np-t">Primero elegí tu pack</div><div class="np-p">Para reservar necesitás un pack activo.</div><button class="np-btn" onclick="go('packs')">Ver packs →</button></div></div>
+    <div class="filters" id="filters">
+      <button class="chip active" data-f="todos" onclick="setFilter(this)">Todos</button>
+      <button class="chip" data-f="Yoga" onclick="setFilter(this)">Yoga</button>
+      <button class="chip" data-f="Pilates" onclick="setFilter(this)">Pilates</button>
+    </div>
+    <div class="daystrip" id="daystrip"></div>
+    <div class="day-lbl" id="dayLbl">Hoy · Viernes</div>
+    <div class="classes" id="classes"></div>
+  </section>
+
+  <!-- AGENDA -->
+  <section class="panel" id="p-agenda"></section>
+
+  <!-- PERFIL -->
+  <section class="panel" id="p-perfil"></section>
+
+</main>
+
+<nav class="botnav">
+  <button class="ni pulse" data-v="packs" id="ni-packs" onclick="go('packs')">
+    <svg viewBox="0 0 24 24"><path d="M3 8l9-5 9 5-9 5-9-5zM3 8v8l9 5 9-5V8"/></svg>
+    <span class="nbadge"></span><span class="ni-lbl">Packs</span>
+  </button>
+  <button class="ni" data-v="clases" id="ni-clases" onclick="go('clases')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+    <span class="ni-lbl">Clases</span>
+  </button>
+  <button class="ni" data-v="agenda" id="ni-agenda" onclick="go('agenda')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+    <span class="ni-lbl">Mi agenda</span>
+  </button>
+  <button class="ni enter" data-v="enter" id="ni-enter" onclick="openLogin()">
+    <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5M15 12H3"/></svg>
+    <span class="ni-lbl">Entrar</span>
+  </button>
+</nav>
+
+<div class="overlay" id="overlay" onclick="closeAll()"></div>
+
+<!-- CLASS SHEET -->
+<div class="sheet" id="classSheet"><div class="handle" onclick="closeAll()"></div><div class="sheet-body" id="classBody"></div></div>
+
+<!-- PAYMENT SHEET -->
+<div class="sheet" id="paySheet"><div class="handle" onclick="closeAll()"></div><div class="sheet-body" id="payBody"></div></div>
+
+<!-- CONFIRM SHEET -->
+<div class="sheet" id="confSheet"><div class="handle" onclick="closeAll()"></div><div class="sheet-body" id="confBody"></div></div>
+
+<!-- WAITLIST SHEET -->
+<div class="sheet" id="wlSheet"><div class="handle" onclick="closeAll()"></div><div class="sheet-body" id="wlBody"></div></div>
+
+<!-- LOGIN SHEET -->
+<div class="sheet" id="loginSheet">
+  <div class="handle" onclick="closeAll()"></div>
+  <div class="sheet-body">
+    <div class="ls-title">Entrá a Zenith</div>
+    <div class="ls-sub">Reservá tu lugar y gestioná tus clases desde acá.</div>
+    <button class="ls-btn apple" onclick="doLogin()"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 12.04c-.03-2.6 2.12-3.85 2.22-3.91-1.21-1.77-3.09-2.01-3.76-2.04-1.6-.16-3.12.94-3.93.94-.81 0-2.06-.92-3.39-.89-1.74.03-3.35 1.01-4.25 2.57-1.81 3.14-.46 7.79 1.3 10.34.86 1.25 1.88 2.65 3.22 2.6 1.29-.05 1.78-.83 3.34-.83 1.56 0 2 .83 3.37.81 1.39-.03 2.27-1.27 3.12-2.53.98-1.45 1.39-2.85 1.41-2.92-.03-.01-2.71-1.04-2.74-4.13M14.6 4.5c.71-.86 1.19-2.06 1.06-3.25-1.02.04-2.26.68-2.99 1.54-.66.76-1.23 1.98-1.08 3.15 1.14.09 2.3-.58 3.01-1.44"/></svg>Apple</button>
+    <button class="ls-btn" onclick="doLogin()"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Google</button>
+    <div class="ls-div">o email</div>
+    <input class="ls-in" type="email" placeholder="tu@email.com">
+    <button class="ls-sub-btn" onclick="doLogin()">Continuar</button>
+    <div class="ls-legal">Al continuar aceptás los términos de uso.</div>
+    <div class="ls-staff"><a href="zenith-admin.html">Acceso admin →</a></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+</div></div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────
+const PACKS=[
+  {id:'esencia',ey:'Yoga',name:'Esencia',desc:'4 clases al mes, a tu ritmo.',price:'$28.000',per:'/ mes',credits:4,
+   feats:['Yoga Hatha y Vinyasa','4 créditos mensuales','Cancelá hasta 8hs antes']},
+  {id:'studio',ey:'Pilates',name:'Studio',desc:'8 clases de Mat. Reformer disponible.',price:'$42.000',per:'/ mes',credits:8,
+   feats:['Pilates Mat y Reformer','8 créditos mensuales','Cambio de horario sin cargo']},
+  {id:'fusion',ey:'★ Más elegido',name:'Fusión',desc:'12 clases combinables + talleres.',price:'$62.000',per:'/ mes',credits:12,feat:true,
+   feats:['Todas las disciplinas','12 créditos mensuales','2 talleres incluidos por mes','7am–9pm · 6 días']},
+  {id:'libre',ey:'Flexible',name:'Libre',desc:'Clases sueltas, sin vencimiento.',price:'$9.500',per:'/ clase',credits:1,
+   feats:['Cualquier disciplina','Sin vencimiento','Comprá de a una o en paquete']},
+];
+const WEEK=[{wd:'Lun',n:9},{wd:'Mar',n:10},{wd:'Mié',n:11},{wd:'Jue',n:12},{wd:'Vie',n:13,today:true},{wd:'Sáb',n:14},{wd:'Dom',n:15}];
+const WDF=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+const CDESC={Yoga:'Práctica de respiración y movimiento fluido. Mat incluido.',Pilates:'Trabajo de core y postura. Apto para todos los niveles.'};
+const DATA={
+  0:[{time:'08:00',end:'09:15',name:'Vinyasa Flow',type:'Yoga',teacher:'Valeria Martínez',room:'Sala 1',taken:7,max:10},
+     {time:'18:30',end:'19:30',name:'Pilates Reformer',type:'Pilates',teacher:'Sofía Rodríguez',room:'Reformer',taken:6,max:6}],
+  3:[{time:'07:30',end:'08:30',name:'Pilates Mat',type:'Pilates',teacher:'Sofía Rodríguez',room:'Sala 2',taken:5,max:10},
+     {time:'19:00',end:'20:15',name:'Yin & Restore',type:'Yoga',teacher:'Camila López',room:'Sala 1',taken:8,max:10}],
+  4:[{time:'07:00',end:'08:15',name:'Vinyasa Flow Mañana',type:'Yoga',teacher:'Valeria Martínez',room:'Sala 1',taken:9,max:10},
+     {time:'08:30',end:'09:30',name:'Pilates Reformer',type:'Pilates',teacher:'Sofía Rodríguez',room:'Reformer',taken:6,max:6},
+     {time:'10:00',end:'11:15',name:'Hatha Principiantes',type:'Yoga',teacher:'Camila López',room:'Sala 1',taken:5,max:10},
+     {time:'19:00',end:'20:00',name:'Pilates Mat Intensivo',type:'Pilates',teacher:'Sofía Rodríguez',room:'Sala 2',taken:8,max:10},
+     {time:'20:30',end:'21:30',name:'Yin & Restore',type:'Yoga',teacher:'Camila López',room:'Sala 1',taken:4,max:10}],
+  5:[{time:'09:00',end:'10:15',name:'Slow Flow',type:'Yoga',teacher:'Valeria Martínez',room:'Sala 1',taken:6,max:10},
+     {time:'11:00',end:'12:00',name:'Pilates Reformer',type:'Pilates',teacher:'Sofía Rodríguez',room:'Reformer',taken:5,max:6}],
+};
+
+// ── STATE ─────────────────────────────────────────────────────
+let loggedIn=false, selPack=null, filter='todos', selDay=4, pendingClass=null;
+let calYear=2026, calMonth=5; // June
+let myBookings=[
+  {day:13,name:'Hatha Principiantes',time:'10:00',teacher:'Camila L.',room:'Sala 1',status:'ok'},
+  {day:13,name:'Pilates Reformer',time:'08:30',teacher:'Sofía R.',room:'Reformer',status:'wl',pos:2},
+];
+let myCredits=2;
+let payMethod='mp';
+
+// ── FUNNEL STEPS ──────────────────────────────────────────────
+function setFunnel(n){
+  // n=1 pack, 2 pago, 3 clases, 4 reserva
+  [1,2,3,4].forEach(i=>{
+    const d=document.getElementById('fd'+i), l=document.getElementById('fl'+i);
+    if(i<n){d.className='fdot done';l.className='flbl done';}
+    else if(i===n){d.className='fdot cur';l.className='flbl cur';}
+    else{d.className='fdot nxt';l.className='flbl nxt';}
+  });
+  [1,2,3].forEach(i=>{
+    const ln=document.getElementById('fln'+i);
+    ln.className='fline'+(i<n?' done':'');
+  });
+}
+
+// ── PACKS ─────────────────────────────────────────────────────
+function renderPacks(){
+  const el=document.getElementById('packsList'); el.innerHTML='';
+  PACKS.forEach(p=>{
+    const s=selPack&&selPack.id===p.id;
+    const d=document.createElement('div');
+    d.className='pk'+(p.feat?' feat':'')+(s?' sel':'');
+    d.innerHTML=`<div class="pk-chk">${s?'✓':''}</div>
+      <div class="pk-ey">${p.ey}</div>
+      <div class="pk-name">${p.name}</div>
+      <div class="pk-desc">${p.desc}</div>
+      <div class="pk-feats">${p.feats.map(f=>`<div class="pkf">${f}</div>`).join('')}</div>
+      <div class="pk-bot"><div class="pk-price">${p.price}<span class="pk-per">${p.per}</span></div>
+      <button class="pk-btn">${s?'Seleccionado ✓':'Elegir'}</button></div>`;
+    d.querySelector('.pk-btn').onclick=e=>{e.stopPropagation();pickPack(p);};
+    d.onclick=()=>pickPack(p);
+    el.appendChild(d);
+  });
+  const b=document.getElementById('selBanner'), nx=document.getElementById('packNext');
+  if(selPack){
+    b.style.display='block';
+    b.innerHTML=`<div class="sel-banner"><div class="sb-l"><div class="sb-chk">✓</div><div><div class="sb-name">Pack ${selPack.name}</div><div class="sb-price">${selPack.price} ${selPack.per}</div></div></div><button class="sb-change" onclick="clearPack()">Cambiar</button></div>`;
+    nx.style.display='block';
+  } else { b.style.display='none'; nx.style.display='none'; }
+  document.getElementById('ni-packs').classList.toggle('pulse',!selPack);
+}
+
+function pickPack(p){
+  selPack=p; renderPacks(); setFunnel(2);
+  toast('Pack '+p.name+' seleccionado');
+  setTimeout(()=>document.getElementById('packNext').scrollIntoView({behavior:'smooth',block:'nearest'}),120);
+}
+function clearPack(){ selPack=null; renderPacks(); setFunnel(1); }
+function goPay(){
+  if(!loggedIn){ openSheet('loginSheet'); return; }
+  renderPay(); openSheet('paySheet');
+}
+
+// ── PAYMENT ───────────────────────────────────────────────────
+function renderPay(){
+  document.getElementById('payBody').innerHTML=`
+    <div class="pay-ico">💳</div>
+    <div class="pay-title">Confirmá tu pack</div>
+    <div class="pay-sub">Elegí cómo querés pagar. Sin permanencia, cancelá cuando quieras.</div>
+    <div class="pay-summary"><div><div class="ps-name">Pack ${selPack.name}</div><div style="font-size:12px;color:var(--ink2);margin-top:2px">${selPack.feats[0]} · ${selPack.feats[1]}</div></div><div class="ps-price">${selPack.price}<span style="font-size:13px;color:var(--ink3)"> ${selPack.per}</span></div></div>
+    <div class="pay-methods">
+      <div class="pay-method sel" id="pm-mp" onclick="selPM('mp')"><div class="pm-ico">💙</div><div><div class="pm-label">Mercado Pago</div><div class="pm-sub">Débito, crédito o saldo MP</div></div><div class="pm-radio"></div></div>
+      <div class="pay-method" id="pm-card" onclick="selPM('card')"><div class="pm-ico">💳</div><div><div class="pm-label">Tarjeta de crédito</div><div class="pm-sub">Visa, Mastercard, Amex</div></div><div class="pm-radio"></div></div>
+      <div class="pay-method" id="pm-transfer" onclick="selPM('transfer')"><div class="pm-ico">🏦</div><div><div class="pm-label">Transferencia bancaria</div><div class="pm-sub">Acreditación en 24hs</div></div><div class="pm-radio"></div></div>
+    </div>
+    <div class="card-fields" id="cardFields">
+      <input class="cinput" placeholder="Número de tarjeta">
+      <div class="cf-row"><input class="cinput" placeholder="MM/AA"><input class="cinput" placeholder="CVV"></div>
+      <input class="cinput" placeholder="Nombre en la tarjeta">
+    </div>
+    <button class="pay-cta" onclick="confirmPay()">Pagar ${selPack.price}</button>`;
+}
+function selPM(m){
+  payMethod=m;
+  document.querySelectorAll('.pay-method').forEach(el=>el.classList.remove('sel'));
+  document.getElementById('pm-'+m).classList.add('sel');
+  document.getElementById('cardFields').className='card-fields'+(m==='card'?' show':'');
+}
+function confirmPay(){
+  closeAll(); myCredits=selPack.credits; setFunnel(3);
+  toast('¡Pago confirmado! Pack '+selPack.name+' activado');
+  setTimeout(()=>go('clases'),600);
+}
+
+// ── DAYS + CLASSES ────────────────────────────────────────────
+function renderDays(){
+  const el=document.getElementById('daystrip'); el.innerHTML='';
+  WEEK.forEach((d,i)=>{
+    const b=document.createElement('button');
+    b.className='day'+(i===selDay?' active':'')+(d.today?' today':'');
+    b.innerHTML=`<span class="day-wd">${d.wd}</span><span class="day-n">${d.n}</span><span class="day-dot" style="${DATA[i]?'':'opacity:0'}"></span>`;
+    b.onclick=()=>{selDay=i;renderDays();renderClasses();};
+    el.appendChild(b);
+  });
+  const d=WEEK[selDay];
+  document.getElementById('clases-date').textContent=`${d.wd} ${d.n} jun`;
+  document.getElementById('dayLbl').textContent=(d.today?'Hoy · ':'')+WDF[selDay];
+}
+
+function renderClasses(){
+  const has=!!selPack&&loggedIn;
+  document.getElementById('nopack-gate').style.display=has?'none':'block';
+  const wrap=document.getElementById('classes'); wrap.innerHTML='';
+  const list=(DATA[selDay]||[]).filter(c=>filter==='todos'||c.type===filter);
+  if(!list.length){ wrap.innerHTML=`<div class="rest"><div class="rest-m">○</div><div class="rest-t">${DATA[selDay]?'Sin clases de '+filter+' este día.':'Día de descanso.'}</div></div>`; return; }
+  let nextDone=false;
+  list.forEach(c=>{
+    const free=c.max-c.taken, pct=Math.round(c.taken/c.max*100), full=free<=0;
+    const isNext=WEEK[selDay].today&&!nextDone; if(isNext)nextDone=true;
+    const locked=!has;
+    const card=document.createElement('div');
+    card.className='cc'+(isNext&&!locked?' next':'')+(locked?' locked':'');
+    card.innerHTML=`
+      ${isNext&&!locked?'<span class="cc-tag">Próxima</span>':''}
+      ${locked?'<span class="cc-lock">🔒</span>':''}
+      <div class="cc-time"><div class="cc-h">${c.time}</div><div class="cc-end">${c.end}</div></div>
+      <div class="cc-mid">
+        <div class="cc-name">${c.name}</div>
+        <div class="cc-teacher">${c.teacher} · ${c.room}</div>
+        <div class="cc-bar-row"><div class="cc-meter"><div class="cc-fill" style="width:${full?100:pct}%;${full?'background:var(--cc)':''}"></div></div>
+        <span class="cc-spots${full?' wl':''}">${full?'Lista de espera':free+' lugar'+(free>1?'es':'')}</span></div>
+      </div><div class="cc-chev">›</div>`;
+    card.onclick=()=>openClass(c,locked);
+    wrap.appendChild(card);
+  });
+}
+function setFilter(el){ document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active')); el.classList.add('active'); filter=el.getAttribute('data-f'); renderClasses(); }
+
+// ── CLASS SHEET ───────────────────────────────────────────────
+function openClass(c,locked){
+  pendingClass=c;
+  const free=c.max-c.taken, full=free<=0;
+  const d=WEEK[selDay];
+  let cta;
+  if(locked) cta=`<div class="cs-need"><span>◈</span><div class="cs-need-t"><b>Elegí un pack primero</b><br>Para reservar necesitás un pack activo.</div></div><button class="cs-cta dark" onclick="closeAll();go('packs')">Ver packs →</button>`;
+  else if(full) cta=`<button class="cs-cta dark" onclick="joinWL()">Unirme a la lista de espera</button>`;
+  else cta=`<button class="cs-cta" onclick="reserve()">Reservar mi lugar</button>`;
+  document.getElementById('classBody').innerHTML=`
+    <div class="cs-ey">${c.type} · ${c.room}</div>
+    <div class="cs-name">${c.name}</div>
+    <div class="cs-rows">
+      <div class="cs-row"><span class="cs-k">Instructora</span><span class="cs-v">${c.teacher}</span></div>
+      <div class="cs-row"><span class="cs-k">Día</span><span class="cs-v">${WDF[selDay]} ${d.n} jun</span></div>
+      <div class="cs-row"><span class="cs-k">Horario</span><span class="cs-v">${c.time} – ${c.end}</span></div>
+      <div class="cs-row"><span class="cs-k">Sala</span><span class="cs-v">${c.room}</span></div>
+    </div>
+    <div class="cs-avail"><div class="cs-anum">${c.taken}<span>/${c.max}</span></div>
+    <div class="cs-atxt">${full?'Clase completa. <b>Sumate a la lista de espera</b> y te avisamos al instante.':`<b>${free} lugar${free>1?'es':''} disponible${free>1?'s':''}</b><br>Reservá para asegurar el tuyo.`}</div></div>
+    <div class="cs-desc">${CDESC[c.type]}</div>${cta}`;
+  openSheet('classSheet');
+}
+
+function reserve(){
+  closeAll(); setFunnel(4);
+  myCredits=Math.max(0,myCredits-1);
+  myBookings.unshift({day:WEEK[selDay].n,name:pendingClass.name,time:pendingClass.time,teacher:pendingClass.teacher.split(' ')[0]+' '+pendingClass.teacher.split(' ')[1][0]+'.',room:pendingClass.room,status:'ok'});
+  setTimeout(()=>{renderConf(false); openSheet('confSheet');},120);
+}
+
+function joinWL(){
+  closeAll();
+  myBookings.unshift({day:WEEK[selDay].n,name:pendingClass.name,time:pendingClass.time,teacher:pendingClass.teacher.split(' ')[0]+' '+pendingClass.teacher.split(' ')[1][0]+'.',room:pendingClass.room,status:'wl',pos:3});
+  setTimeout(()=>{ renderWLSheet(); openSheet('wlSheet'); },120);
+}
+
+// ── CONFIRMATION ──────────────────────────────────────────────
+function renderConf(isWL){
+  const c=pendingClass, d=WEEK[selDay];
+  document.getElementById('confBody').innerHTML=`
+    <div class="conf-ico">${isWL?'⏳':'✅'}</div>
+    <div class="conf-title">${isWL?'Estás en lista de espera':'¡Reserva confirmada!'}</div>
+    <div class="conf-sub">${isWL?'Te avisamos al instante si se libera un lugar.':'Te esperamos. Recordatorio 2 horas antes.'}</div>
+    <div class="conf-card">
+      <div class="conf-class">${c.name}</div>
+      <div class="conf-rows">
+        <div class="conf-row"><span>Día</span><span>${WDF[selDay]} ${d.n} jun</span></div>
+        <div class="conf-row"><span>Horario</span><span>${c.time} – ${c.end}</span></div>
+        <div class="conf-row"><span>Instructora</span><span>${c.teacher}</span></div>
+        <div class="conf-row"><span>Sala</span><span>${c.room}</span></div>
+        ${!isWL?`<div class="conf-row"><span>Créditos restantes</span><span>${myCredits}</span></div>`:''}
+      </div>
+    </div>
+    <div class="conf-actions">
+      <button class="cal-btn" onclick="toast('Abriendo Apple Calendar…')">📅 Agregar a Apple Calendar</button>
+      <button class="cal-btn" onclick="toast('Abriendo Google Calendar…')">📅 Agregar a Google Calendar</button>
+    </div>
+    <button class="conf-close" onclick="closeAll();go('agenda');renderAgenda()">Ver mi agenda →</button>`;
+}
+
+// ── WAITLIST SHEET ────────────────────────────────────────────
+function renderWLSheet(){
+  const c=pendingClass, d=WEEK[selDay];
+  document.getElementById('wlBody').innerHTML=`
+    <div class="wl-ico">⏳</div>
+    <div class="wl-title">En lista de espera</div>
+    <div class="wl-sub">Te notificamos al instante si se libera un lugar. Tenés 30 minutos para confirmar.</div>
+    <div class="wl-pos-card"><div class="wl-pos-n">#3</div><div class="wl-pos-lbl">Tu posición en la lista</div></div>
+    <div class="wl-info-rows">
+      <div class="wl-row"><span>Clase</span><span>${c.name}</span></div>
+      <div class="wl-row"><span>Día</span><span>${WDF[selDay]} ${d.n} jun</span></div>
+      <div class="wl-row"><span>Horario</span><span>${c.time} – ${c.end}</span></div>
+      <div class="wl-row"><span>Personas adelante</span><span>2</span></div>
+    </div>
+    <button class="wl-notif" onclick="toast('Notificaciones push activadas ✓')">🔔 Activar notificación push</button>
+    <button class="wl-leave" onclick="closeAll();toast('Saliste de la lista de espera')">Salir de la lista</button>`;
+}
+
+// ── AGENDA + CALENDAR ─────────────────────────────────────────
+function renderAgenda(){
+  const el=document.getElementById('p-agenda');
+  if(!loggedIn){
+    el.innerHTML=`<div class="gate"><div class="gate-ico">○</div><div class="gate-h">Ingresá para agendar clases</div><div class="gate-p">Iniciá sesión, elegí tu pack y empezá a reservar. Tus clases aparecen acá.</div><button class="gate-btn" onclick="go('packs')">Empezar →</button></div>`;
+    return;
+  }
+  if(!selPack){
+    el.innerHTML=`<div class="gate"><div class="gate-ico">○</div><div class="gate-h">Elegí tu pack primero</div><div class="gate-p">Para reservar clases necesitás un pack activo. Tenemos opciones desde $9.500.</div><button class="gate-btn" onclick="go('packs')">Ver packs →</button></div>`;
+    return;
+  }
+  // Build calendar
+  const MNAMES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const firstDow=(new Date(calYear,calMonth,1).getDay()+6)%7; // Mon=0
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  const bookedDays=myBookings.filter(b=>b.status==='ok').map(b=>b.day);
+  const wlDays=myBookings.filter(b=>b.status==='wl').map(b=>b.day);
+  let calCells='';
+  for(let i=0;i<firstDow;i++) calCells+=`<div class="cday other"></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const isToday=calYear===2026&&calMonth===5&&d===13;
+    const hasBook=bookedDays.includes(d);
+    const hasWL=wlDays.includes(d);
+    let cls='cday'+(isToday?' today':'')+(hasBook?' has':'')+(hasWL&&!hasBook?' wl-day':'');
+    calCells+=`<div class="${cls}">${d}</div>`;
+  }
+  el.innerHTML=`
+    <div class="cal-nav">
+      <button class="cal-arr" onclick="shiftMonth(-1)">‹</button>
+      <div class="cal-month">${MNAMES[calMonth]} ${calYear}</div>
+      <button class="cal-arr" onclick="shiftMonth(1)">›</button>
+    </div>
+    <div class="cal-grid">
+      <div class="cal-dows"><div class="cal-dow">L</div><div class="cal-dow">M</div><div class="cal-dow">X</div><div class="cal-dow">J</div><div class="cal-dow">V</div><div class="cal-dow">S</div><div class="cal-dow">D</div></div>
+      <div class="cal-days">${calCells}</div>
+    </div>
+    <div class="ag-divider"></div>
+    <div style="padding:0 16px 8px"><div class="ag-credits"><div><div class="agc-l">Créditos disponibles</div><div class="agc-sub">Pack ${selPack.name} · ${selPack.price}</div></div><div><div class="agc-v">${myCredits}<span style="font-size:14px;color:var(--ink3)"> / ${selPack.credits}</span></div></div></div></div>
+    <div class="ag-lbl">Próximas clases</div>
+    <div class="ag-list">${myBookings.map(b=>`
+      <div class="ag-item" onclick="showBookingDetail(${JSON.stringify(b).replace(/"/g,"'")})">
+        <div class="ag-date"><div class="ag-d">${b.day}</div><div class="ag-m">Jun</div></div>
+        <div class="ag-info"><div class="ag-name">${b.name}</div><div class="ag-meta">${b.time} · ${b.teacher} · ${b.room}</div></div>
+        <div class="ag-st ${b.status==='ok'?'s-ok':'s-wl'}">${b.status==='ok'?'Confirmada':'#'+b.pos+' en espera'}</div>
+      </div>`).join('')}
+      ${myBookings.length===0?`<div class="ag-empty"><div class="ag-empty-m">○</div><div class="ag-empty-t">Todavía no tenés clases reservadas.</div><button class="ag-empty-btn" onclick="go('clases')">Ver clases →</button></div>`:''}
+    </div>`;
+}
+
+function shiftMonth(d){ calMonth+=d; if(calMonth<0){calMonth=11;calYear--;} if(calMonth>11){calMonth=0;calYear++;} renderAgenda(); }
+
+function showBookingDetail(b){
+  if(typeof b==='string') b=JSON.parse(b.replace(/'/g,'"'));
+  if(b.status==='wl'){ pendingClass={name:b.name,time:b.time,end:'',teacher:b.teacher,room:b.room,max:6,taken:6}; renderWLSheet(); openSheet('wlSheet'); return; }
+  pendingClass={name:b.name,time:b.time,end:'',teacher:b.teacher,room:b.room};
+  const d={n:b.day}; selDay=4;
+  document.getElementById('confBody').innerHTML=`
+    <div class="conf-ico">✅</div>
+    <div class="conf-title">Reserva confirmada</div>
+    <div class="conf-sub">Te esperamos. Recordatorio 2 horas antes.</div>
+    <div class="conf-card">
+      <div class="conf-class">${b.name}</div>
+      <div class="conf-rows">
+        <div class="conf-row"><span>Día</span><span>Viernes ${b.day} jun</span></div>
+        <div class="conf-row"><span>Horario</span><span>${b.time}</span></div>
+        <div class="conf-row"><span>Instructora</span><span>${b.teacher}</span></div>
+        <div class="conf-row"><span>Sala</span><span>${b.room}</span></div>
+      </div>
+    </div>
+    <div class="conf-actions">
+      <button class="cal-btn" onclick="toast('Abriendo Apple Calendar…')">📅 Apple Calendar</button>
+    </div>
+    <button class="conf-close" style="background:#c0392b" onclick="cancelBooking('${b.name}')">Cancelar reserva</button>`;
+  openSheet('confSheet');
+}
+
+function cancelBooking(name){
+  myBookings=myBookings.filter(b=>b.name!==name);
+  myCredits++;
+  closeAll(); renderAgenda(); toast('Reserva cancelada · crédito devuelto');
+}
+
+// ── PERFIL ────────────────────────────────────────────────────
+function renderPerfil(){
+  const el=document.getElementById('p-perfil');
+  if(!loggedIn){
+    el.innerHTML=`<div class="gate"><div class="gate-ico">○</div><div class="gate-h">Iniciá sesión para ver tu perfil</div><div class="gate-p">Accedé a tus datos, pack activo e historial de clases.</div><button class="gate-btn" onclick="openLogin()">Entrar →</button></div>`;
+    return;
+  }
+  el.innerHTML=`
+    <div class="prof-head">
+      <div class="prof-av">MG</div>
+      <div><div class="prof-name">María García</div><div class="prof-email">maria@email.com</div></div>
+    </div>
+    <div class="prof-sections">
+      <div class="prof-card">
+        <div class="prof-card-title">Mi plan</div>
+        <div class="prof-row"><span class="pr-l">Pack activo</span><span class="pr-r">${selPack?'Pack '+selPack.name:'Sin pack'}<span class="pr-chev">›</span></span></div>
+        <div class="prof-row"><span class="pr-l">Créditos restantes</span><span class="pr-r">${myCredits}<span class="pr-chev">›</span></span></div>
+        <div class="prof-row" onclick="go('packs')"><span class="pr-l">Cambiar pack</span><span class="pr-r"><span class="pr-chev">›</span></span></div>
+      </div>
+      <div class="prof-card">
+        <div class="prof-card-title">Mi cuenta</div>
+        <div class="prof-row"><span class="pr-l">Nombre</span><span class="pr-r">María García <span class="pr-chev">›</span></span></div>
+        <div class="prof-row"><span class="pr-l">Email</span><span class="pr-r">maria@email.com <span class="pr-chev">›</span></span></div>
+        <div class="prof-row"><span class="pr-l">Contraseña</span><span class="pr-r">●●●●●● <span class="pr-chev">›</span></span></div>
+        <div class="prof-row"><span class="pr-l">Notificaciones</span><span class="pr-r"><span class="prof-badge">Activas</span><span class="pr-chev">›</span></span></div>
+      </div>
+      <div class="prof-card">
+        <div class="prof-card-title">Historial</div>
+        <div class="prof-row"><span class="pr-l">Clases tomadas</span><span class="pr-r">14 <span class="pr-chev">›</span></span></div>
+        <div class="prof-row"><span class="pr-l">Política de cancelación</span><span class="pr-r"><span class="pr-chev">›</span></span></div>
+      </div>
+    </div>
+    <button class="prof-logout" onclick="doLogout()">Cerrar sesión</button>`;
+}
+
+// ── LOGIN ─────────────────────────────────────────────────────
+function openLogin(){ openSheet('loginSheet'); }
+function doLogin(){
+  loggedIn=true; closeAll();
+  // nav: enter → perfil
+  const ne=document.getElementById('ni-enter');
+  ne.className='ni'; ne.setAttribute('data-v','perfil');
+  ne.innerHTML='<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg><span class="ni-lbl">Perfil</span>';
+  ne.onclick=()=>go('perfil');
+  const tc=document.getElementById('topCta');
+  tc.textContent='Vos'; tc.classList.add('logged'); tc.onclick=()=>go('perfil');
+  toast('Bienvenida a Zenith');
+  renderAgenda(); renderPerfil();
+  if(pendingClass) setTimeout(()=>openClass(pendingClass,false),600);
+  else if(selPack) setTimeout(()=>go('clases'),500);
+}
+function doLogout(){
+  loggedIn=false; selPack=null; pendingClass=null; myCredits=0; myBookings=[];
+  const ne=document.getElementById('ni-enter');
+  ne.className='ni enter'; ne.setAttribute('data-v','enter');
+  ne.innerHTML='<svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5M15 12H3"/></svg><span class="ni-lbl">Entrar</span>';
+  ne.onclick=()=>openLogin();
+  const tc=document.getElementById('topCta');
+  tc.textContent='Entrar'; tc.classList.remove('logged'); tc.onclick=()=>openLogin();
+  renderPacks(); renderAgenda(); renderPerfil(); setFunnel(1);
+  go('packs'); toast('Sesión cerrada');
+}
+
+// ── NAV ───────────────────────────────────────────────────────
+function go(v){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('p-'+v).classList.add('active');
+  document.querySelectorAll('.ni').forEach(n=>n.classList.toggle('active',n.getAttribute('data-v')===v));
+  document.getElementById('view').scrollTop=0;
+  if(v==='clases'){renderClasses();}
+  if(v==='agenda'){renderAgenda();}
+  if(v==='perfil'){renderPerfil();}
+}
+
+// ── SHEETS ────────────────────────────────────────────────────
+function openSheet(id){ document.getElementById('overlay').classList.add('show'); document.getElementById(id).classList.add('open'); }
+function closeAll(){ document.getElementById('overlay').classList.remove('show'); document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('open')); }
+
+// ── TOAST ─────────────────────────────────────────────────────
+function toast(msg){
+  const s=document.getElementById('toasts'),t=document.createElement('div');
+  t.className='toast'; t.innerHTML=`<span class="tk"></span><span>${msg}</span>`; s.appendChild(t);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>t.classList.add('show')));
+  setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300);},3000);
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+renderPacks(); renderDays(); renderClasses(); renderAgenda(); renderPerfil();
+</script>
+</body></html>
