@@ -3,196 +3,110 @@
 import { useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { cn } from "@/lib/utils";
-import {
-  addMonths,
-  subMonths,
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
-  endOfWeek,
-  addDays,
-  format,
-  isSameMonth,
-  isSameDay,
-  isToday,
-} from "date-fns";
-import { es } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import Link from "next/link";
 
-interface ReservaMes {
-  fecha: Date;
-  clase: string;
-  hora: string;
-  estado: "confirmada" | "cancelada" | "asistio" | "ausente";
-}
+const MNAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-const reservasMock: ReservaMes[] = [
-  {
-    fecha: new Date(2026, 5, 23),
-    clase: "Vinyasa Flow",
-    hora: "08:00",
-    estado: "confirmada",
-  },
-  {
-    fecha: new Date(2026, 5, 25),
-    clase: "Hatha Yoga",
-    hora: "10:00",
-    estado: "confirmada",
-  },
-  {
-    fecha: new Date(2026, 5, 20),
-    clase: "Yin Yoga",
-    hora: "18:30",
-    estado: "asistio",
-  },
-  {
-    fecha: new Date(2026, 5, 18),
-    clase: "Pilates Reformer",
-    hora: "09:00",
-    estado: "cancelada",
-  },
+const DAYS = ["L","M","X","J","V","S","D"];
+
+interface Booking { dayLabel: string; name: string; time: string; teacher: string; room: string; status: "ok" | "wl" | "done" | "missed"; pos?: number }
+
+const myBookings: Booking[] = [
+  { dayLabel: "Vie 13 jun", name: "Hatha Principiantes", time: "10:00", teacher: "Camila L.", room: "Sala 1", status: "ok" },
+  { dayLabel: "Vie 13 jun", name: "Pilates Reformer", time: "08:30", teacher: "Sofía R.", room: "Reformer", status: "wl", pos: 2 },
 ];
 
-const estadoClases: Record<string, string> = {
-  confirmada: "bg-accent text-accent-foreground",
-  cancelada: "bg-destructive/10 text-destructive line-through",
-  asistio: "bg-secondary text-secondary-foreground",
-  ausente: "bg-destructive/10 text-destructive",
+const statusLabels: Record<string, { label: string; cls: string }> = {
+  ok: { label: "Confirmada", cls: "text-primary bg-bordo-surface" },
+  wl: { label: "Lista de espera", cls: "text-amber-text bg-amber-soft" },
+  done: { label: "Asistió", cls: "text-accent bg-sage-soft" },
+  missed: { label: "Ausente", cls: "text-muted-foreground bg-muted" },
 };
 
 export default function AgendaPage() {
-  const [mesActual, setMesActual] = useState(new Date());
-  const creditos = 6; // mock
+  const [calYear, setCalYear] = useState(2026);
+  const [calMonth, setCalMonth] = useState(5);
 
-  const inicioMes = startOfMonth(mesActual);
-  const finMes = endOfMonth(mesActual);
-  const inicioCal = startOfWeek(inicioMes, { weekStartsOn: 1 });
-  const finCal = endOfWeek(finMes, { weekStartsOn: 1 });
+  const firstDow = (new Date(calYear, calMonth, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const isToday = (d: number) => calYear === 2026 && calMonth === 5 && d === 13;
+  const hasBooking = (d: number) => myBookings.some(b => b.status === "ok" && b.dayLabel.includes(`${d}`));
+  const hasWL = (d: number) => myBookings.some(b => b.status === "wl" && b.dayLabel.includes(`${d}`));
 
-  const dias: Date[] = [];
-  let dia = inicioCal;
-  while (dia <= finCal) {
-    dias.push(dia);
-    dia = addDays(dia, 1);
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push(<div key={`e${i}`} className="cday" />);
+  for (let d = 1; d <= daysInMonth; d++) {
+    const today = isToday(d);
+    const hb = hasBooking(d);
+    const hwl = hasWL(d) && !hb;
+    cells.push(
+      <div key={d} className={cn("flex aspect-square cursor-pointer flex-col items-center justify-center rounded-[11px] text-[13px] transition-all hover:bg-muted relative",
+        today && "bg-foreground text-white font-semibold", !today && "text-muted-foreground")}>
+        {d}
+        {(hb || hwl) && <span className={cn("absolute bottom-1 size-1 rounded-full", today ? "bg-secondary" : hb ? "bg-primary" : "bg-[#C8960A]")} />}
+      </div>
+    );
   }
-
-  const reservasDelDia = (fecha: Date) =>
-    reservasMock.filter((r) => isSameDay(r.fecha, fecha));
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-lg space-y-6 px-4 pb-8 pt-8">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              Mi agenda
-            </h1>
-            <p className="text-sm text-accent font-medium">
-              {creditos} créditos disponibles
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => setMesActual((m) => subMonths(m, 1))}
-            className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <ChevronLeft className="size-5" />
-          </button>
-          <span className="text-sm font-semibold text-foreground">
-            {format(mesActual, "MMMM yyyy", { locale: es })}
-          </span>
-          <button
-            onClick={() => setMesActual((m) => addMonths(m, 1))}
-            className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <ChevronRight className="size-5" />
-          </button>
-        </div>
-
+      <header className="flex shrink-0 items-start justify-between px-[22px] pb-3 pt-[max(16px,env(safe-area-inset-top))]">
         <div>
-          <div className="grid grid-cols-7 text-center">
-            {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => (
-              <span
-                key={d}
-                className="py-1 text-[10px] font-medium text-muted-foreground"
-              >
-                {d}
-              </span>
-            ))}
+          <div className="font-serif text-[21px] tracking-[-0.01em] leading-none">
+            Pampa<span className="ml-0.5 inline-block size-[5px] rounded-full bg-[linear-gradient(135deg,#D7D9E0,#F4F5F8,#C2C4CE)] align-middle" />
           </div>
+          <div className="mt-px text-[10px] font-medium tracking-[0.14em] uppercase text-ink-dim">Pilates & Yoga</div>
+        </div>
+        <Link href="/login" className="rounded-[100px] bg-bordo-surface px-[14px] py-[7px] text-[13px] font-semibold text-primary transition-colors hover:bg-[#e0dbf9]">Entrar</Link>
+      </header>
 
-          <div className="grid grid-cols-7 gap-0.5">
-            {dias.map((dia) => {
-              const reservas = reservasDelDia(dia);
-              const fueraDeMes = !isSameMonth(dia, mesActual);
+      <div className="flex items-center justify-between px-[22px] pb-1 pt-[10px]">
+        <h2 className="font-serif text-[22px] tracking-[-0.01em]">{MNAMES[calMonth]} {calYear}</h2>
+        <div className="flex gap-1">
+          <button onClick={() => calMonth === 0 ? (setCalMonth(11), setCalYear(y => y - 1)) : setCalMonth(m => m - 1)} className="flex size-8 items-center justify-center rounded-[10px] border border-[rgba(26,25,31,.14)] bg-card text-base cursor-pointer transition-all hover:bg-[#EFEEEC]">‹</button>
+          <button onClick={() => calMonth === 11 ? (setCalMonth(0), setCalYear(y => y + 1)) : setCalMonth(m => m + 1)} className="flex size-8 items-center justify-center rounded-[10px] border border-[rgba(26,25,31,.14)] bg-card text-base cursor-pointer transition-all hover:bg-[#EFEEEC]">›</button>
+        </div>
+      </div>
 
-              return (
-                <div
-                  key={dia.toISOString()}
-                  className={cn(
-                    "flex flex-col items-center rounded-lg py-1",
-                    fueraDeMes && "opacity-30"
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "flex size-7 items-center justify-center rounded-full text-xs",
-                      isToday(dia) && "bg-primary text-primary-foreground font-semibold",
-                      !isToday(dia) && "text-foreground"
-                    )}
-                  >
-                    {format(dia, "d")}
-                  </span>
+      <div className="px-[22px] pb-[2px] pt-[6px]">
+        <div className="grid grid-cols-7 gap-[2px] mb-1">
+          {DAYS.map(d => <div key={d} className="py-1 text-center text-[10px] font-semibold tracking-[0.05em] uppercase text-ink-dim">{d}</div>)}
+        </div>
+        <div className="grid grid-cols-7 gap-[3px]">
+          {cells}
+        </div>
+      </div>
 
-                  <div className="mt-0.5 flex gap-0.5">
-                    {reservas.slice(0, 2).map((r, i) => (
-                      <span
-                        key={i}
-                        className={cn(
-                          "size-1.5 rounded-full",
-                          estadoClases[r.estado].split(" ")[0]
-                        )}
-                      />
-                    ))}
-                    {reservas.length > 2 && (
-                      <span className="text-[8px] text-muted-foreground">
-                        +{reservas.length - 2}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+      <div className="mx-[22px] my-[10px] h-px bg-border" />
+
+      <div className="mx-4 mb-2 rounded-[14px] border border-border bg-card px-4 py-[13px] flex items-center justify-between">
+        <div>
+          <div className="text-xs text-muted-foreground">Créditos disponibles</div>
+          <div className="text-[11px] text-ink-dim mt-px">Pack Fusión · $62.000</div>
+        </div>
+        <div className="font-serif text-[22px]">2<span className="text-sm text-ink-dim font-sans"> / 12</span></div>
+      </div>
+
+      <div className="px-[22px] py-[10px] pb-[6px]">
+        <span className="text-[11px] font-semibold tracking-[0.1em] uppercase text-ink-dim">Próximas reservas</span>
+      </div>
+
+      <div className="flex flex-col gap-2 px-4 pb-4">
+        {myBookings.map((b, i) => (
+          <div key={i} className="flex items-center gap-3 rounded-[22px] border border-border bg-card p-[14px] transition-all hover:border-[rgba(26,25,31,.14)] cursor-pointer">
+            <div className="w-11 shrink-0 text-center border-r border-border pr-3">
+              <div className="font-serif text-[21px] leading-none">{b.dayLabel.split(" ")[0].replace(/\D/g,"")}</div>
+              <div className="mt-[2px] text-[10px] font-semibold tracking-[0.08em] uppercase text-ink-dim">{b.dayLabel.split(" ")[1].slice(0,3)}</div>
+            </div>
+            <div className="flex-1">
+              <div className="font-serif text-base">{b.name}</div>
+              <div className="mt-[2px] text-xs text-muted-foreground">{b.time} · {b.teacher} · {b.room}</div>
+            </div>
+            <span className={cn("shrink-0 rounded-[100px] px-[9px] py-1 text-[11px] font-semibold whitespace-nowrap", statusLabels[b.status].cls)}>
+              {statusLabels[b.status].label}{b.pos ? ` #${b.pos}` : ""}
+            </span>
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-foreground">
-            Próximas reservas
-          </h2>
-          {reservasMock
-            .filter((r) => r.estado === "confirmada")
-            .map((r, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between rounded-xl border border-border bg-card p-3"
-              >
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {r.clase}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {format(r.fecha, "EEEE d MMM", { locale: es })} · {r.hora}
-                  </p>
-                </div>
-                <button className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-destructive">
-                  <X className="size-4" />
-                </button>
-              </div>
-            ))}
-        </div>
+        ))}
       </div>
     </AppShell>
   );
