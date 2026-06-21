@@ -44,6 +44,8 @@
   --color-sage-soft: var(--sage-soft);
   --color-naranja-soft: var(--naranja-soft);
   --color-lila-soft: var(--lila-soft);
+  --color-amber-soft: var(--amber-soft);
+  --color-amber-text: var(--amber-text);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -93,6 +95,8 @@
   --sage-soft: #EEF1EB;
   --naranja-soft: #FFF2E5;
   --lila-soft: #EDE9FC;
+  --amber-soft: #F4EEDD;
+  --amber-text: #9A7B2E;
 }
 
 @layer base {

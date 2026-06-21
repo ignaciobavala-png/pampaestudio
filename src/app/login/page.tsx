@@ -45,7 +45,7 @@ export default function LoginPage() {
 
           <p className="text-center text-[11px] text-ink-dim leading-relaxed">Al continuar aceptás los términos de uso.</p>
           <p className="text-center">
-            <Link href="#" className="text-xs text-ink-dim no-underline">Acceso admin →</Link>
+            <Link href="/admin" className="text-xs text-ink-dim no-underline">Acceso admin →</Link>
           </p>
         </div>
       </div>
