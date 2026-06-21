@@ -6,12 +6,9 @@ import Link from "next/link";
 export default function PerfilPage() {
   return (
     <AppShell>
-      <header className="flex shrink-0 items-start justify-between px-[22px] pb-3 pt-[max(16px,env(safe-area-inset-top))]">
+      <header className="flex shrink-0 items-center justify-between px-[22px] pb-3 pt-[max(16px,env(safe-area-inset-top))]">
         <div>
-          <div className="font-serif text-[21px] tracking-[-0.01em] leading-none">
-            Pampa<span className="ml-0.5 inline-block size-[5px] rounded-full bg-[linear-gradient(135deg,#D7D9E0,#F4F5F8,#C2C4CE)] align-middle" />
-          </div>
-          <div className="mt-px text-[10px] font-medium tracking-[0.14em] uppercase text-ink-dim">Pilates & Yoga</div>
+            <img src="/assets/logo-pilates.png" alt="Pampa Estudio" className="h-[152px] w-auto brightness-0 -my-[66.5px] -ml-3" />
         </div>
         <Link href="/login" className="rounded-[100px] bg-bordo-surface px-[14px] py-[7px] text-[13px] font-semibold text-primary transition-colors hover:bg-[#e0dbf9]">Entrar</Link>
       </header>

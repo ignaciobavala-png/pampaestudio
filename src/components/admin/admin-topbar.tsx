@@ -21,8 +21,8 @@ export function AdminTopbar() {
         ← Sitio
       </Link>
 
-      <Link href="/admin" className="font-serif text-[19px] tracking-[-0.01em] no-underline text-foreground">
-        Pampa<span className="ml-0.5 inline-block size-[5px] rounded-full bg-[linear-gradient(135deg,#D7D9E0,#F4F5F8,#C2C4CE)] align-middle" />
+      <Link href="/admin" className="flex items-center no-underline">
+        <img src="/assets/logo-pilates.png" alt="Pampa Estudio" className="h-48 w-auto brightness-0 -my-24 -ml-3" />
       </Link>
 
       <nav className="ml-6 flex gap-0.5 flex-1 max-[860px]:hidden">
