@@ -2,20 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { WeekCalendar } from "@/components/admin/week-calendar";
-import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/types/database";
-
-type ClassTemplate = Database["public"]["Tables"]["class_templates"]["Row"];
-
-interface WeekEvent {
-  time: string;
-  end: string;
-  name: string;
-  type: "Yoga" | "Pilates";
-  teacher: string;
-  taken: number;
-  max: number;
-}
+import { fetchWeekData } from "./actions";
+import type { WeekEvent } from "./actions";
 
 function getWeekDays(date: Date) {
   const todayDow = (date.getDay() + 6) % 7;
@@ -49,46 +37,10 @@ export default function SemanaPage() {
 
   const fetchWeek = useCallback(async () => {
     setLoading(true);
-    const supabase = createClient();
     const weekDays = getWeekDays(weekStart);
-
-    const result: Record<number, WeekEvent[]> = {};
-
-    for (let di = 0; di < 6; di++) {
-      const { data: templates } = await supabase
-        .from("class_templates")
-        .select("*")
-        .eq("day_of_week", di)
-        .eq("is_active", true)
-        .order("time_start");
-
-      if (!templates) {
-        result[di] = [];
-        continue;
-      }
-
-      const events: WeekEvent[] = [];
-
-      for (const t of templates) {
-        const { data: count } = await supabase.rpc("count_confirmed", {
-          p_template_id: t.id,
-          p_date: weekDays[di].date,
-        });
-
-        events.push({
-          time: t.time_start.slice(0, 5),
-          end: t.time_end.slice(0, 5),
-          name: t.name,
-          type: t.discipline as "Yoga" | "Pilates",
-          teacher: t.teacher.split(" ").slice(0, 2).join(" ").replace(/\.$/, "") + ".",
-          taken: (count as number) || 0,
-          max: t.max_capacity,
-        });
-      }
-
-      result[di] = events;
-    }
-
+    const result = await fetchWeekData(
+      weekDays.map((d, i) => ({ di: i, date: d.date }))
+    );
     setData(result);
     setLoading(false);
   }, [weekStart]);

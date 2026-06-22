@@ -13,9 +13,10 @@ interface ClassDetailProps {
   onMaxChange: (index: number, newMax: number) => void;
   onCancelClass: () => void;
   index: number;
+  dateLabel: string;
 }
 
-export function ClassDetail({ cls, max, onClose, onMaxChange, onCancelClass, index }: ClassDetailProps) {
+export function ClassDetail({ cls, max, onClose, onMaxChange, onCancelClass, index, dateLabel }: ClassDetailProps) {
   const { name, type, room, teacher, time, end, taken } = cls;
   const free = max - taken;
   const pct = Math.round((taken / max) * 100);
@@ -48,7 +49,7 @@ export function ClassDetail({ cls, max, onClose, onMaxChange, onCancelClass, ind
                 {name}
               </h2>
               <div className="mt-1 mb-4 text-[13px] text-ink-dim">
-                {teacher} · {time}–{end} · Vie 13 jun
+                {teacher} · {time}–{end} · {dateLabel}
               </div>
             </div>
             <button onClick={onClose} className="hidden min-[861px]:flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-[rgba(26,25,31,.14)] bg-white text-[15px] text-ink-dim transition-colors hover:text-foreground hover:bg-[#EFEFED] ml-3 mt-1">

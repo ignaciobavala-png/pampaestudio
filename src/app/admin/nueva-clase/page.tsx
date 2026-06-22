@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { useAuthStore } from "@/lib/store/auth-store";
+import { createClassTemplate } from "./actions";
 
 const INSTRUCTORS = ["Valeria Martínez", "Sofía Rodríguez", "Camila López"];
 const ROOMS = ["Sala 1", "Sala 2", "Reformer"];
@@ -20,7 +19,6 @@ const DAY_OPTIONS = [
 
 export default function NuevaClasePage() {
   const router = useRouter();
-  const { user } = useAuthStore();
   const [discipline, setDiscipline] = useState<"Yoga" | "Pilates">("Yoga");
   const [name, setName] = useState("");
   const [teacher, setTeacher] = useState(INSTRUCTORS[0]);
@@ -41,29 +39,27 @@ export default function NuevaClasePage() {
 
     setLoading(true);
     setError(null);
-    const supabase = createClient();
 
-    const { error: insertError } = await supabase
-      .from("class_templates")
-      .insert({
-        name: name.trim(),
-        discipline,
-        teacher,
-        room,
-        day_of_week: dayOfWeek,
-        time_start: timeStart,
-        time_end: timeEnd,
-        max_capacity: maxCapacity,
-        description: description || null,
-        created_by: user?.id || null,
-      });
+    const result = await createClassTemplate({
+      name: name.trim(),
+      discipline,
+      teacher,
+      room,
+      day_of_week: dayOfWeek,
+      time_start: timeStart,
+      time_end: timeEnd,
+      max_capacity: maxCapacity,
+      description: description || null,
+    });
 
-    if (insertError) {
-      setError(insertError.message);
+    if (result.error) {
+      setError(result.error);
       setLoading(false);
-    } else {
-      router.push("/admin");
+      return;
     }
+
+    setLoading(false);
+    router.push("/admin");
   };
 
   return (

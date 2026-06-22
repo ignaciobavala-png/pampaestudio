@@ -1,8 +1,10 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/lib/store/auth-store";
 
 const tabs = [
   { id: "hoy", label: "Hoy", href: "/admin" },
@@ -11,9 +13,32 @@ const tabs = [
   { id: "nueva", label: "Nueva clase", href: "/admin/nueva-clase" },
 ];
 
+const DAY_NAMES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const MONTH_NAMES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+function getInitials(name: string): string {
+  return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+}
+
 export function AdminTopbar() {
   const pathname = usePathname();
   const activeTab = tabs.find((t) => t.href === pathname)?.id || "hoy";
+  const { profile } = useAuthStore();
+  const [dateStr, setDateStr] = useState("");
+  const [timeStr, setTimeStr] = useState("");
+
+  useEffect(() => {
+    function tick() {
+      const now = new Date();
+      setDateStr(`${DAY_NAMES[now.getDay()]} ${now.getDate()} ${MONTH_NAMES[now.getMonth()]}`);
+      setTimeStr(now.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }));
+    }
+    tick();
+    const id = setInterval(tick, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const initials = profile?.full_name ? getInitials(profile.full_name) : "—";
 
   return (
     <header className="sticky top-0 z-60 flex h-[58px] items-center border-b border-[rgba(26,25,31,.085)] bg-[#F1F1EF]/88 backdrop-blur-xl saturate-[180%] px-5 [-webkit-backdrop-filter:blur(20px)_saturate(180%)]">
@@ -47,9 +72,11 @@ export function AdminTopbar() {
           <span className="size-[6px] rounded-full bg-primary shadow-[0_0_0_3px_var(--color-bordo-surface)]" />
           En vivo
         </span>
-        <span className="text-xs text-ink-dim">Vie 13 jun · 10:42</span>
+        {dateStr && (
+          <span className="text-xs text-ink-dim">{dateStr} · {timeStr}</span>
+        )}
         <div className="flex size-[30px] shrink-0 items-center justify-center rounded-full border border-[rgba(26,25,31,.14)] bg-white text-[11px] font-semibold text-ink-dim">
-          AS
+          {initials}
         </div>
       </div>
     </header>

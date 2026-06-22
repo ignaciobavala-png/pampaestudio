@@ -7,16 +7,8 @@ import { ClassListRow } from "@/components/admin/class-list-row";
 import { ClassDetail } from "@/components/admin/class-detail";
 import { CancelModal } from "@/components/admin/cancel-modal";
 import { ToastProvider, useToast } from "@/components/admin/toast";
-import { createClient } from "@/lib/supabase/client";
+import { fetchAdminDay, updateClassMaxCapacity, cancelClass } from "./actions";
 import type { AdminClass } from "@/lib/admin-types";
-import type { Database } from "@/types/database";
-
-type ClassTemplate = Database["public"]["Tables"]["class_templates"]["Row"];
-
-const DISCIPLINE_COLORS: Record<string, string> = {
-  Yoga: "var(--color-primary)",
-  Pilates: "#9A7B2E",
-};
 
 function getWeekDays() {
   const today = new Date();
@@ -45,26 +37,17 @@ function getDateForDay(dayIndex: number): string {
   return target.toISOString().slice(0, 10);
 }
 
-function generateAvColor(name: string): string {
-  const colors = [
-    "#490419", "#7C6FF2", "#6E63C8", "#5E6BD6",
-    "#4E7C9E", "#8A6FD0", "#5B7C8A", "#7355C8",
-    "#6E6D78", "#9A7B2E",
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return colors[Math.abs(hash) % colors.length];
-}
+const DAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const MONTH_LABELS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase();
+function getDateLabel(dayIndex: number): string {
+  const today = new Date();
+  const todayDow = (today.getDay() + 6) % 7;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - todayDow);
+  const target = new Date(monday);
+  target.setDate(monday.getDate() + dayIndex);
+  return `${DAY_LABELS[dayIndex]} ${target.getDate()} ${MONTH_LABELS[target.getMonth()]}`;
 }
 
 function HoyContent() {
@@ -84,105 +67,11 @@ function HoyContent() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const supabase = createClient();
     const date = getDateForDay(dayIndex);
-
-    const { data: templates } = await supabase
-      .from("class_templates")
-      .select("*")
-      .eq("day_of_week", dayIndex)
-      .eq("is_active", true)
-      .order("time_start");
-
-    if (!templates || templates.length === 0) {
-      setClasses([]);
-      setClassMaxes([]);
-      setLoading(false);
-      return;
-    }
-
-    const classesData: AdminClass[] = [];
-    const maxes: number[] = [];
-    let totalBookings = 0;
-    let totalConfirmed = 0;
-    let totalWL = 0;
-    let totalCapacity = 0;
-
-    for (const t of templates) {
-      const { data: confirmed } = await supabase
-        .from("bookings")
-        .select("*, profiles(full_name), user_packs(packs(name))")
-        .eq("template_id", t.id)
-        .eq("date", date)
-        .eq("status", "confirmed")
-        .order("created_at");
-
-      const { data: waitlist } = await supabase
-        .from("bookings")
-        .select("*, profiles(full_name)")
-        .eq("template_id", t.id)
-        .eq("date", date)
-        .eq("status", "waitlist")
-        .order("waitlist_position");
-
-      const att: AdminClass["att"] = (confirmed || []).map((b) => {
-        const p = b as unknown as {
-          profiles: { full_name: string } | null;
-          user_packs: { packs: { name: string } | null }[] | null;
-        };
-        const name = p.profiles?.full_name || "Sin nombre";
-        const pack =
-          p.user_packs?.[0]?.packs?.name || "Sin pack";
-        return [name, pack, generateAvColor(name), getInitials(name)];
-      });
-
-      const wl: AdminClass["wl"] = (waitlist || []).map((b) => {
-        const p = b as unknown as {
-          profiles: { full_name: string } | null;
-        };
-        const name = p.profiles?.full_name || "Sin nombre";
-        const since = b.created_at
-          ? new Date(b.created_at).toLocaleTimeString("es-AR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-          : "";
-        return [name, generateAvColor(name), getInitials(name), since];
-      });
-
-      const taken = (confirmed || []).length;
-      totalBookings += taken;
-      totalWL += (waitlist || []).length;
-      totalConfirmed += taken;
-      totalCapacity += t.max_capacity;
-
-      classesData.push({
-        name: t.name,
-        type: t.discipline as "Yoga" | "Pilates",
-        room: t.room,
-        teacher: t.teacher,
-        time: t.time_start.slice(0, 5),
-        end: t.time_end.slice(0, 5),
-        taken,
-        max: t.max_capacity,
-        color: DISCIPLINE_COLORS[t.discipline] || "var(--color-primary)",
-        att,
-        wl,
-      });
-
-      maxes.push(t.max_capacity);
-    }
-
-    setClasses(classesData);
-    setClassMaxes(maxes);
-    setKpis({
-      total: templates.length,
-      ocupacion:
-        totalCapacity > 0
-          ? Math.round((totalConfirmed / totalCapacity) * 100)
-          : 0,
-      espera: totalWL,
-    });
+    const result = await fetchAdminDay(dayIndex, date);
+    setClasses(result.classes);
+    setClassMaxes(result.maxes);
+    setKpis(result.kpis);
     setLoading(false);
   }, [dayIndex]);
 
@@ -209,21 +98,7 @@ function HoyContent() {
         return next;
       });
 
-      const supabase = createClient();
-      const templates = await supabase
-        .from("class_templates")
-        .select("id")
-        .eq("name", cls.name)
-        .eq("day_of_week", dayIndex)
-        .single();
-
-      if (templates.data) {
-        await supabase
-          .from("class_templates")
-          .update({ max_capacity: newMax })
-          .eq("id", templates.data.id);
-      }
-
+      await updateClassMaxCapacity(cls.name, dayIndex, newMax);
       toast(`Cupo actualizado a ${newMax} lugares`);
     },
     [classes, dayIndex, toast]
@@ -240,34 +115,10 @@ function HoyContent() {
     if (!cls) return;
 
     setCancelTarget(null);
-    const supabase = createClient();
-
-    const { data: template } = await supabase
-      .from("class_templates")
-      .select("id")
-      .eq("name", cls.name)
-      .eq("day_of_week", dayIndex)
-      .single();
-
-    if (template) {
-      const date = getDateForDay(dayIndex);
-
-      await supabase
-        .from("bookings")
-        .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
-        .eq("template_id", template.id)
-        .eq("date", date)
-        .eq("status", "confirmed");
-
-      await supabase
-        .from("bookings")
-        .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
-        .eq("template_id", template.id)
-        .eq("date", date)
-        .eq("status", "waitlist");
-    }
-
-    toast(`Clase cancelada · ${cls.taken} créditos devueltos · notificadas`);
+    const date = getDateForDay(dayIndex);
+    const { creditsRestored } = await cancelClass(cls.name, dayIndex, date);
+    const restored = creditsRestored || cls.taken;
+    toast(`Clase cancelada · ${restored} créditos devueltos · notificadas`);
     fetchData();
   }, [cancelTarget, classes, dayIndex, toast, fetchData]);
 
@@ -361,6 +212,7 @@ function HoyContent() {
                 onClose={closeDetail}
                 onMaxChange={handleMaxChange}
                 onCancelClass={openCancel}
+                dateLabel={getDateLabel(dayIndex)}
               />
             ) : (
               <div className="contents">
