@@ -1,9 +1,14 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
+import { useAuthStore } from "@/lib/store/auth-store";
+import type { Database } from "@/types/database";
+
+type ClassTemplate = Database["public"]["Tables"]["class_templates"]["Row"];
 
 const CDESC: Record<string, string> = {
   Yoga: "Práctica de respiración y movimiento fluido. Mat incluido.",
@@ -13,40 +18,166 @@ const CDESC: Record<string, string> = {
 function DetalleContent() {
   const params = useSearchParams();
   const router = useRouter();
-  const name = params.get("name") || "";
-  const time = params.get("time") || "";
-  const end = params.get("end") || "";
-  const type = params.get("type") || "";
-  const teacher = params.get("teacher") || "";
-  const room = params.get("room") || "";
-  const taken = parseInt(params.get("taken") || "0");
-  const max = parseInt(params.get("max") || "10");
-  const dayN = params.get("dayN") || "";
-  const dayName = params.get("dayName") || "";
+  const { user, profile, refreshProfile } = useAuthStore();
+
+  const templateId = params.get("id") || "";
+  const date = params.get("date") || "";
+
+  const [template, setTemplate] = useState<ClassTemplate | null>(null);
+  const [taken, setTaken] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [booking, setBooking] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [bookingError, setBookingError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!templateId || !date) return;
+
+    const supabase = createClient();
+
+    (async () => {
+      const { data: t } = await supabase
+        .from("class_templates")
+        .select("*")
+        .eq("id", templateId)
+        .single();
+      setTemplate(t);
+
+      const { data: count } = await supabase.rpc("count_confirmed", {
+        p_template_id: templateId,
+        p_date: date,
+      });
+      setTaken((count as number) || 0);
+      setLoading(false);
+    })();
+  }, [templateId, date]);
+
+  if (loading || !template) {
+    return (
+      <AppShell>
+        <div className="flex items-center justify-center py-20">
+          <div className="text-muted-foreground">Cargando...</div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  const max = template.max_capacity;
   const free = max - taken;
   const full = free <= 0;
+  const time = template.time_start.slice(0, 5);
+  const end = template.time_end.slice(0, 5);
+  const dayN = params.get("dayN") || "";
+  const dayName = params.get("dayName") || "";
+
+  const handleReserve = async () => {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    setBooking("loading");
+    setBookingError(null);
+    const supabase = createClient();
+
+    if (full) {
+      const { data: pos } = await supabase.rpc("get_next_waitlist_position", {
+        p_template_id: templateId,
+        p_date: date,
+      });
+
+      const { error } = await supabase.from("bookings").insert({
+        user_id: user.id,
+        template_id: templateId,
+        date,
+        status: "waitlist",
+        waitlist_position: (pos as number) || 1,
+      });
+
+      if (error) {
+        setBooking("error");
+        setBookingError(error.message);
+      } else {
+        setBooking("success");
+        router.push("/confirmacion?wl=true");
+      }
+    } else {
+      const { data: userPack } = await supabase
+        .from("user_packs")
+        .select("id, credits_remaining")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .gt("credits_remaining", 0)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!userPack) {
+        setBooking("error");
+        setBookingError("No tenés créditos disponibles. Comprá un pack para reservar.");
+        return;
+      }
+
+      const { error: bookingError } = await supabase.from("bookings").insert({
+        user_id: user.id,
+        template_id: templateId,
+        date,
+        status: "confirmed",
+      });
+
+      if (bookingError) {
+        setBooking("error");
+        setBookingError(bookingError.message);
+        return;
+      }
+
+      await supabase
+        .from("user_packs")
+        .update({ credits_remaining: userPack.credits_remaining - 1 })
+        .eq("id", userPack.id);
+
+      await refreshProfile();
+      setBooking("success");
+      router.push("/confirmacion");
+    }
+  };
 
   return (
     <AppShell>
       <header className="flex shrink-0 items-center justify-between px-[22px] pb-3 pt-[max(16px,env(safe-area-inset-top))]">
         <div>
-            <img src="/assets/logo-pilates.png" alt="Pampa Estudio" className="h-[152px] w-auto brightness-0 -my-[66.5px] -ml-3" />
+          <img
+            src="/assets/logo-pilates.png"
+            alt="Pampa Estudio"
+            className="h-[152px] w-auto brightness-0 -my-[66.5px] -ml-3"
+          />
         </div>
-        <button onClick={() => router.back()} className="rounded-[100px] bg-bordo-surface px-[14px] py-[7px] text-[13px] font-semibold text-primary transition-colors hover:bg-[#e0dbf9]">← Volver</button>
+        <button
+          onClick={() => router.back()}
+          className="rounded-[100px] bg-bordo-surface px-[14px] py-[7px] text-[13px] font-semibold text-primary transition-colors hover:bg-[#e0dbf9]"
+        >
+          ← Volver
+        </button>
       </header>
 
       <div className="px-6 pt-2 pb-6">
-        <div className="mb-2 text-[11px] font-semibold tracking-[0.1em] uppercase text-ink-dim">{type} · {room}</div>
-        <h1 className="font-serif text-[28px] leading-[1.08] tracking-[-0.02em] mb-3">{name}</h1>
+        <div className="mb-2 text-[11px] font-semibold tracking-[0.1em] uppercase text-ink-dim">
+          {template.discipline} · {template.room}
+        </div>
+        <h1 className="font-serif text-[28px] leading-[1.08] tracking-[-0.02em] mb-3">
+          {template.name}
+        </h1>
 
         <div className="my-[14px] border-t border-border">
           {[
-            ["Instructora", teacher],
+            ["Instructora", template.teacher],
             ["Día", `${dayName} ${dayN} jun`],
             ["Horario", `${time} – ${end}`],
-            ["Sala", room],
+            ["Sala", template.room],
           ].map(([k, v]) => (
-            <div key={k} className="flex items-center justify-between border-b border-border py-3">
+            <div
+              key={k}
+              className="flex items-center justify-between border-b border-border py-3"
+            >
               <span className="text-[13px] text-muted-foreground">{k}</span>
               <span className="text-sm font-medium">{v}</span>
             </div>
@@ -54,16 +185,52 @@ function DetalleContent() {
         </div>
 
         <div className="my-[14px] flex items-center gap-[13px] rounded-[14px] bg-muted px-4 py-[14px]">
-          <div className="font-serif text-[32px] leading-none">{taken}<span className="text-base text-ink-dim">/{max}</span></div>
+          <div className="font-serif text-[32px] leading-none">
+            {taken}
+            <span className="text-base text-ink-dim">/{max}</span>
+          </div>
           <div className="text-[13px] text-muted-foreground leading-relaxed">
-            {full ? <>Clase completa. <b className="text-primary font-semibold">Sumate a la lista de espera</b> y te avisamos al instante.</> : <><b className="text-primary font-semibold">{free} lugar{free > 1 ? "es" : ""} disponible{free > 1 ? "s" : ""}</b><br />Reservá para asegurar el tuyo.</>}
+            {full ? (
+              <>
+                Clase completa.{" "}
+                <b className="text-primary font-semibold">
+                  Sumate a la lista de espera
+                </b>{" "}
+                y te avisamos al instante.
+              </>
+            ) : (
+              <>
+                <b className="text-primary font-semibold">
+                  {free} lugar{free > 1 ? "es" : ""} disponible
+                  {free > 1 ? "s" : ""}
+                </b>
+                <br />
+                Reservá para asegurar el tuyo.
+              </>
+            )}
           </div>
         </div>
 
-        <p className="mb-4 text-[13.5px] text-muted-foreground leading-relaxed">{CDESC[type] || ""}</p>
+        <p className="mb-4 text-[13.5px] text-muted-foreground leading-relaxed">
+          {CDESC[template.discipline] || ""}
+        </p>
 
-        <Button className="h-auto w-full rounded-[14px] py-[15px] text-[15px] font-semibold" onClick={() => router.push(full ? "/confirmacion?wl=true" : "/confirmacion")}>
-          {full ? "Unirme a la lista de espera" : "Reservar mi lugar"}
+        {bookingError && (
+          <p className="mb-3 rounded-[10px] bg-[#FDE8E8] px-3 py-2 text-[12px] text-[#C0392B]">
+            {bookingError}
+          </p>
+        )}
+
+        <Button
+          className="h-auto w-full rounded-[14px] py-[15px] text-[15px] font-semibold"
+          disabled={booking === "loading"}
+          onClick={handleReserve}
+        >
+          {booking === "loading"
+            ? "Procesando..."
+            : full
+              ? "Unirme a la lista de espera"
+              : "Reservar mi lugar"}
         </Button>
       </div>
     </AppShell>
@@ -71,5 +238,13 @@ function DetalleContent() {
 }
 
 export default function DetallePage() {
-  return <Suspense fallback={<div className="p-6 text-muted-foreground">Cargando...</div>}><DetalleContent /></Suspense>;
+  return (
+    <Suspense
+      fallback={
+        <div className="p-6 text-muted-foreground">Cargando...</div>
+      }
+    >
+      <DetalleContent />
+    </Suspense>
+  );
 }

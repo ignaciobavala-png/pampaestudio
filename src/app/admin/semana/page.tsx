@@ -1,15 +1,11 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import { WeekCalendar } from "@/components/admin/week-calendar";
+import { createClient } from "@/lib/supabase/client";
+import type { Database } from "@/types/database";
 
-const DAYS = [
-  { wd: "Lun", n: 9 },
-  { wd: "Mar", n: 10 },
-  { wd: "Mie", n: 11 },
-  { wd: "Jue", n: 12 },
-  { wd: "Vie", n: 13, today: true },
-  { wd: "Sab", n: 14 },
-];
+type ClassTemplate = Database["public"]["Tables"]["class_templates"]["Row"];
 
 interface WeekEvent {
   time: string;
@@ -21,56 +17,139 @@ interface WeekEvent {
   max: number;
 }
 
-const WEEK_DATA: Record<number, WeekEvent[]> = {
-  0: [
-    { time: "08:00", end: "09:15", name: "Vinyasa Flow", type: "Yoga", teacher: "Valeria M.", taken: 7, max: 10 },
-    { time: "10:00", end: "11:00", name: "Pilates Mat", type: "Pilates", teacher: "Sofia R.", taken: 4, max: 10 },
-    { time: "19:00", end: "20:00", name: "Yin & Restore", type: "Yoga", teacher: "Camila L.", taken: 9, max: 10 },
-  ],
-  1: [
-    { time: "07:30", end: "08:30", name: "Pilates Reformer", type: "Pilates", teacher: "Sofia R.", taken: 6, max: 6 },
-    { time: "20:00", end: "21:15", name: "Hatha Flow", type: "Yoga", teacher: "Valeria M.", taken: 3, max: 10 },
-  ],
-  2: [
-    { time: "08:00", end: "09:15", name: "Vinyasa Flow", type: "Yoga", teacher: "Valeria M.", taken: 8, max: 10 },
-    { time: "10:00", end: "11:00", name: "Pilates Mat", type: "Pilates", teacher: "Sofia R.", taken: 6, max: 10 },
-    { time: "19:30", end: "20:30", name: "Slow Flow", type: "Yoga", teacher: "Camila L.", taken: 5, max: 10 },
-  ],
-  3: [
-    { time: "07:30", end: "08:30", name: "Pilates Reformer", type: "Pilates", teacher: "Sofia R.", taken: 5, max: 6 },
-    { time: "19:00", end: "20:15", name: "Yin & Restore", type: "Yoga", teacher: "Camila L.", taken: 8, max: 10 },
-  ],
-  4: [
-    { time: "07:00", end: "08:15", name: "Vinyasa Flow Manana", type: "Yoga", teacher: "Valeria M.", taken: 9, max: 10 },
-    { time: "08:30", end: "09:30", name: "Pilates Reformer", type: "Pilates", teacher: "Sofia R.", taken: 6, max: 6 },
-    { time: "10:00", end: "11:15", name: "Hatha Principiantes", type: "Yoga", teacher: "Camila L.", taken: 5, max: 10 },
-    { time: "19:00", end: "20:00", name: "Pilates Mat Intensivo", type: "Pilates", teacher: "Sofia R.", taken: 8, max: 10 },
-    { time: "20:30", end: "21:30", name: "Yin & Restore", type: "Yoga", teacher: "Camila L.", taken: 4, max: 10 },
-  ],
-  5: [
-    { time: "09:00", end: "10:15", name: "Slow Flow", type: "Yoga", teacher: "Valeria M.", taken: 6, max: 10 },
-    { time: "11:00", end: "12:00", name: "Pilates Reformer", type: "Pilates", teacher: "Sofia R.", taken: 5, max: 6 },
-  ],
-};
+function getWeekDays(date: Date) {
+  const todayDow = (date.getDay() + 6) % 7;
+  const monday = new Date(date);
+  monday.setDate(date.getDate() - todayDow);
+
+  return Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const today = new Date();
+    return {
+      wd: ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab"][i],
+      n: d.getDate(),
+      date: d.toISOString().slice(0, 10),
+      today: d.toDateString() === today.toDateString(),
+    };
+  });
+}
 
 export default function SemanaPage() {
+  const [weekStart, setWeekStart] = useState(() => {
+    const d = new Date();
+    const dow = (d.getDay() + 6) % 7;
+    d.setDate(d.getDate() - dow);
+    return d;
+  });
+  const [data, setData] = useState<Record<number, WeekEvent[]>>({});
+  const [loading, setLoading] = useState(true);
+
+  const days = getWeekDays(weekStart);
+
+  const fetchWeek = useCallback(async () => {
+    setLoading(true);
+    const supabase = createClient();
+    const weekDays = getWeekDays(weekStart);
+
+    const result: Record<number, WeekEvent[]> = {};
+
+    for (let di = 0; di < 6; di++) {
+      const { data: templates } = await supabase
+        .from("class_templates")
+        .select("*")
+        .eq("day_of_week", di)
+        .eq("is_active", true)
+        .order("time_start");
+
+      if (!templates) {
+        result[di] = [];
+        continue;
+      }
+
+      const events: WeekEvent[] = [];
+
+      for (const t of templates) {
+        const { data: count } = await supabase.rpc("count_confirmed", {
+          p_template_id: t.id,
+          p_date: weekDays[di].date,
+        });
+
+        events.push({
+          time: t.time_start.slice(0, 5),
+          end: t.time_end.slice(0, 5),
+          name: t.name,
+          type: t.discipline as "Yoga" | "Pilates",
+          teacher: t.teacher.split(" ").slice(0, 2).join(" ").replace(/\.$/, "") + ".",
+          taken: (count as number) || 0,
+          max: t.max_capacity,
+        });
+      }
+
+      result[di] = events;
+    }
+
+    setData(result);
+    setLoading(false);
+  }, [weekStart]);
+
+  useEffect(() => {
+    fetchWeek();
+  }, [fetchWeek]);
+
+  const prevWeek = () => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() - 7);
+    setWeekStart(d);
+  };
+
+  const nextWeek = () => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + 7);
+    setWeekStart(d);
+  };
+
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 5);
+
+  const months = [
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+  ];
+
   return (
     <div>
       <div className="flex items-end justify-between mb-5 flex-wrap gap-2.5">
         <div>
           <h1 className="font-serif text-[32px] tracking-[-0.02em]">Semana</h1>
-          <p className="mt-1 text-[13px] text-ink-dim">9 – 14 junio 2026</p>
+          <p className="mt-1 text-[13px] text-ink-dim">
+            {days[0].n} – {days[5].n}{" "}
+            {months[weekEnd.getMonth()]} {weekEnd.getFullYear()}
+          </p>
         </div>
         <div className="flex gap-2">
-          <button className="cursor-pointer rounded-[10px] border border-[rgba(26,25,31,.14)] bg-white px-[15px] py-2 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[#EFEFED]">
+          <button
+            onClick={prevWeek}
+            className="cursor-pointer rounded-[10px] border border-[rgba(26,25,31,.14)] bg-white px-[15px] py-2 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[#EFEFED]"
+          >
             ‹ Anterior
           </button>
-          <button className="cursor-pointer rounded-[10px] border border-[rgba(26,25,31,.14)] bg-white px-[15px] py-2 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[#EFEFED]">
+          <button
+            onClick={nextWeek}
+            className="cursor-pointer rounded-[10px] border border-[rgba(26,25,31,.14)] bg-white px-[15px] py-2 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[#EFEFED]"
+          >
             Siguiente ›
           </button>
         </div>
       </div>
-      <WeekCalendar days={DAYS} data={WEEK_DATA} />
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <div className="text-ink-dim">Cargando...</div>
+        </div>
+      ) : (
+        <WeekCalendar days={days} data={data} />
+      )}
     </div>
   );
 }

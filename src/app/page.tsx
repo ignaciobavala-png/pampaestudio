@@ -1,94 +1,89 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { PackCard, type Pack } from "@/components/cards/pack-card";
 import { FunnelSteps } from "@/components/nav/funnel-steps";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
+import { useAuthStore } from "@/lib/store/auth-store";
 import Link from "next/link";
+import type { Database } from "@/types/database";
 
-const packs: Pack[] = [
-  {
-    id: "esencia",
-    eyebrow: "Yoga",
-    name: "Esencia",
-    description: "4 clases al mes, a tu ritmo.",
-    price: "$28.000",
-    per: "/ mes",
-    credits: 4,
-    features: [
-      "Yoga Hatha y Vinyasa",
-      "4 créditos mensuales",
-      "Cancelá hasta 8hs antes",
-    ],
-  },
-  {
-    id: "studio",
-    eyebrow: "Pilates",
-    name: "Studio",
-    description: "8 clases de Mat. Reformer disponible.",
-    price: "$42.000",
-    per: "/ mes",
-    credits: 8,
-    features: [
-      "Pilates Mat y Reformer",
-      "8 créditos mensuales",
-      "Cambio de horario sin cargo",
-    ],
-  },
-  {
-    id: "fusion",
-    eyebrow: "★ Más elegido",
-    name: "Fusión",
-    description: "12 clases combinables + talleres.",
-    price: "$62.000",
-    per: "/ mes",
-    credits: 12,
-    featured: true,
-    features: [
-      "Todas las disciplinas",
-      "12 créditos mensuales",
-      "2 talleres incluidos por mes",
-      "7am–9pm · 6 días",
-    ],
-  },
-  {
-    id: "libre",
-    eyebrow: "Flexible",
-    name: "Libre",
-    description: "Clases sueltas, sin vencimiento.",
-    price: "$9.500",
-    per: "/ clase",
-    credits: 1,
-    features: [
-      "Cualquier disciplina",
-      "Sin vencimiento",
-      "Comprá de a una o en paquete",
-    ],
-  },
-];
+type PackRow = Database["public"]["Tables"]["packs"]["Row"];
+
+function formatPrice(cents: number): string {
+  return `$${(cents / 100).toLocaleString("es-AR")}`;
+}
+
+function mapPack(row: PackRow): Pack {
+  return {
+    id: row.id,
+    eyebrow: row.eyebrow,
+    name: row.name,
+    description: row.description,
+    price: formatPrice(row.price),
+    per: row.period === "monthly" ? "/ mes" : "/ clase",
+    credits: row.credits,
+    featured: row.is_featured,
+    features: Array.isArray(row.features)
+      ? row.features.map(String)
+      : [],
+  };
+}
 
 export default function HomePage() {
   const router = useRouter();
+  const { user } = useAuthStore();
+  const [packs, setPacks] = useState<Pack[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Pack | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .from("packs")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order")
+      .then(({ data }) => {
+        if (data) setPacks(data.map(mapPack));
+        setLoading(false);
+      });
+  }, []);
 
   const handleSelect = (pack: Pack) => {
     setSelected((prev) => (prev?.id === pack.id ? null : pack));
   };
 
+  if (user && packs.length === 0) return null;
+
   return (
     <AppShell>
       <header className="flex shrink-0 items-center justify-between px-[22px] pb-3 pt-[max(16px,env(safe-area-inset-top))]">
         <div>
-          <img src="/assets/logo-pilates.png" alt="Pampa Estudio" className="h-[152px] w-auto brightness-0 -my-[66.5px] -ml-3" />
+          <img
+            src="/assets/logo-pilates.png"
+            alt="Pampa Estudio"
+            className="h-[152px] w-auto brightness-0 -my-[66.5px] -ml-3"
+          />
         </div>
-        <Link
-          href="/login"
-          className="rounded-[100px] bg-bordo-surface px-[14px] py-[7px] text-[13px] font-semibold text-primary transition-colors hover:bg-[#e0dbf9]"
-        >
-          Entrar
-        </Link>
+        {user ? (
+          <Link
+            href="/perfil"
+            className="rounded-[100px] bg-bordo-surface px-[14px] py-[7px] text-[13px] font-semibold text-primary transition-colors hover:bg-[#e0dbf9]"
+          >
+            Perfil
+          </Link>
+        ) : (
+          <Link
+            href="/login"
+            className="rounded-[100px] bg-bordo-surface px-[14px] py-[7px] text-[13px] font-semibold text-primary transition-colors hover:bg-[#e0dbf9]"
+          >
+            Entrar
+          </Link>
+        )}
       </header>
 
       <FunnelSteps current={1} />
@@ -124,24 +119,41 @@ export default function HomePage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-[9px] px-4 pb-1 pt-[6px]">
-        {packs.map((pack) => (
-          <PackCard
-            key={pack.id}
-            pack={pack}
-            selected={selected?.id === pack.id}
-            onSelect={handleSelect}
-          />
-        ))}
-      </div>
+      {loading ? (
+        <div className="flex flex-col gap-[9px] px-4 pb-1 pt-[6px]">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="h-[180px] animate-pulse rounded-[22px] bg-muted"
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-[9px] px-4 pb-1 pt-[6px]">
+          {packs.map((pack) => (
+            <PackCard
+              key={pack.id}
+              pack={pack}
+              selected={selected?.id === pack.id}
+              onSelect={handleSelect}
+            />
+          ))}
+        </div>
+      )}
 
       {selected && (
         <div className="px-4 pb-4 pt-2">
           <Button
             className="h-auto w-full rounded-[14px] py-[14px] text-[14.5px] font-bold"
-            onClick={() => router.push("/pago")}
+            onClick={() => {
+              if (!user) {
+                router.push("/login");
+              } else {
+                router.push("/pago");
+              }
+            }}
           >
-            Continuar al pago →
+            {user ? "Continuar al pago →" : "Entrar para continuar →"}
           </Button>
         </div>
       )}
