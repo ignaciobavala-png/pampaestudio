@@ -117,5 +117,5 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (profile) set({ profile });
   },
 
-  setUser: (user) => set({ user, loading: false }),
+  setUser: (user) => set({ user, profile: user ? get().profile : null, loading: false }),
 }));

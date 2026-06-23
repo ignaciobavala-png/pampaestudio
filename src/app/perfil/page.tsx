@@ -96,12 +96,6 @@ export default function PerfilPage() {
             className="h-[152px] w-auto brightness-0 -my-[66.5px] -ml-3"
           />
         </div>
-        <Link
-          href="/login"
-          className="rounded-[100px] bg-bordo-surface px-[14px] py-[7px] text-[13px] font-semibold text-primary transition-colors hover:bg-[#e0dbf9]"
-        >
-          Entrar
-        </Link>
       </header>
 
       <div className="flex items-center gap-[14px] border-b border-border px-[22px] py-5">
@@ -181,7 +175,7 @@ export default function PerfilPage() {
       <button
         onClick={async () => {
           await signOut();
-          router.replace("/");
+          window.location.href = "/";
         }}
         className="mx-4 mt-2 w-[calc(100%-32px)] cursor-pointer rounded-[12px] border border-[rgba(26,25,31,.14)] bg-transparent py-3 font-sans text-[13.5px] font-medium text-muted-foreground transition-all hover:text-foreground hover:border-ink-dim"
       >

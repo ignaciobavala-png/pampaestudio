@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { FunnelSteps } from "@/components/nav/funnel-steps";
 import { createClient } from "@/lib/supabase/client";
+import { useAuthStore } from "@/lib/store/auth-store";
 import { cn } from "@/lib/utils";
 import type { Database } from "@/types/database";
 
@@ -36,6 +38,7 @@ function getWeekDays() {
 
 export default function ClasesPage() {
   const router = useRouter();
+  const { user } = useAuthStore();
   const [filter, setFilter] = useState<string>("todos");
   const [selDay, setSelDay] = useState(() => new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
   const [templates, setTemplates] = useState<ClassTemplate[]>([]);
@@ -95,9 +98,14 @@ export default function ClasesPage() {
             className="h-[152px] w-auto brightness-0 -my-[66.5px] -ml-3"
           />
         </div>
-        <button className="rounded-[100px] bg-bordo-surface px-[14px] py-[7px] text-[13px] font-semibold text-primary transition-colors hover:bg-[#e0dbf9]">
-          Entrar
-        </button>
+        {!user && (
+          <Link
+            href="/login"
+            className="rounded-[100px] bg-bordo-surface px-[14px] py-[7px] text-[13px] font-semibold text-primary transition-colors hover:bg-[#e0dbf9]"
+          >
+            Entrar
+          </Link>
+        )}
       </header>
 
       <FunnelSteps current={3} />
