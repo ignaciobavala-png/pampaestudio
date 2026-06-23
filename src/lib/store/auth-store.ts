@@ -13,6 +13,7 @@ interface AuthState {
 
   initialize: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signInWithGoogle: () => Promise<void>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -26,21 +27,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   initialized: false,
 
   initialize: async () => {
-    const supabase = createClient();
-    const { data } = await supabase.auth.getSession();
-    const user = data.session?.user ?? null;
+    try {
+      const supabase = createClient();
+      const { data: authData } = await supabase.auth.getUser();
+      const user = authData?.user ?? null;
 
-    let profile: Profile | null = null;
-    if (user) {
-      const { data: p } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-      profile = p;
+      let profile: Profile | null = null;
+      if (user) {
+        const { data: p } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single();
+        profile = p;
+      }
+
+      set({ user, profile, loading: false, initialized: true });
+    } catch {
+      set({ loading: false, initialized: true });
     }
-
-    set({ user, profile, loading: false, initialized: true });
   },
 
   signIn: async (email, password) => {
@@ -63,8 +68,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       profile = p;
     }
 
-    set({ user, profile });
+    set({ user, profile, loading: false, initialized: true });
     return { error: null };
+  },
+
+  signInWithGoogle: async () => {
+    const supabase = createClient();
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${location.origin}/api/auth/callback`,
+      },
+    });
   },
 
   signUp: async (email, password, fullName) => {
@@ -85,7 +100,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signOut: async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    set({ user: null, profile: null });
+    set({ user: null, profile: null, loading: false });
   },
 
   refreshProfile: async () => {
@@ -102,5 +117,5 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (profile) set({ profile });
   },
 
-  setUser: (user) => set({ user }),
+  setUser: (user) => set({ user, loading: false }),
 }));

@@ -47,8 +47,8 @@ export default function HomePage() {
       .select("*")
       .eq("is_active", true)
       .order("sort_order")
-      .then(({ data }) => {
-        if (data) setPacks(data.map(mapPack));
+      .then(({ data, error }) => {
+        if (data && !error) setPacks(data.map(mapPack));
         setLoading(false);
       });
   }, []);
@@ -57,7 +57,7 @@ export default function HomePage() {
     setSelected((prev) => (prev?.id === pack.id ? null : pack));
   };
 
-  if (user && packs.length === 0) return null;
+  const emptyAndDone = !loading && packs.length === 0;
 
   return (
     <AppShell>
@@ -127,6 +127,12 @@ export default function HomePage() {
               className="h-[180px] animate-pulse rounded-[22px] bg-muted"
             />
           ))}
+        </div>
+      ) : emptyAndDone ? (
+        <div className="px-4 py-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            No hay packs disponibles por ahora.
+          </p>
         </div>
       ) : (
         <div className="flex flex-col gap-[9px] px-4 pb-1 pt-[6px]">

@@ -254,6 +254,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_cancel_class: {
+        Args: { p_date: string; p_template_id: string }
+        Returns: Json
+      }
+      book_spot: {
+        Args: { p_date: string; p_template_id: string }
+        Returns: Json
+      }
+      cancel_booking: { Args: { p_booking_id: string }; Returns: Json }
       count_confirmed: {
         Args: { p_date: string; p_template_id: string }
         Returns: number

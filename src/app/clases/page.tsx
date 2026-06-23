@@ -49,6 +49,7 @@ export default function ClasesPage() {
   const fetchTemplates = useCallback(async () => {
     setLoading(true);
     const supabase = createClient();
+    const date = week[selDay].date;
 
     const { data: tmpls } = await supabase
       .from("class_templates")
@@ -59,13 +60,13 @@ export default function ClasesPage() {
 
     setTemplates(tmpls || []);
 
-    if (tmpls && tmpls.length > 0 && day) {
+    if (tmpls && tmpls.length > 0) {
       const map: Record<string, number> = {};
       await Promise.all(
         tmpls.map(async (t) => {
           const { data } = await supabase.rpc("count_confirmed", {
             p_template_id: t.id,
-            p_date: day.date,
+            p_date: date,
           });
           map[t.id] = (data as number) || 0;
         })
@@ -74,7 +75,7 @@ export default function ClasesPage() {
     }
 
     setLoading(false);
-  }, [selDay, day]);
+  }, [selDay]);
 
   useEffect(() => {
     fetchTemplates();

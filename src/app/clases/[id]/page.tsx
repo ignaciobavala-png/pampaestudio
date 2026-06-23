@@ -79,64 +79,31 @@ function DetalleContent() {
     setBookingError(null);
     const supabase = createClient();
 
-    if (full) {
-      const { data: pos } = await supabase.rpc("get_next_waitlist_position", {
-        p_template_id: templateId,
-        p_date: date,
-      });
+    const { data: result, error } = await supabase.rpc("book_spot", {
+      p_template_id: templateId,
+      p_date: date,
+    });
 
-      const { error } = await supabase.from("bookings").insert({
-        user_id: user.id,
-        template_id: templateId,
-        date,
-        status: "waitlist",
-        waitlist_position: (pos as number) || 1,
-      });
+    if (error) {
+      setBooking("error");
+      setBookingError(error.message);
+      return;
+    }
 
-      if (error) {
-        setBooking("error");
-        setBookingError(error.message);
-      } else {
-        setBooking("success");
-        router.push("/confirmacion?wl=true");
-      }
+    const res = result as { status?: string; error?: string; position?: number };
+
+    if (res.error) {
+      setBooking("error");
+      setBookingError(res.error);
+      return;
+    }
+
+    await refreshProfile();
+    setBooking("success");
+
+    if (res.status === "waitlist") {
+      router.push("/confirmacion?wl=true");
     } else {
-      const { data: userPack } = await supabase
-        .from("user_packs")
-        .select("id, credits_remaining")
-        .eq("user_id", user.id)
-        .eq("status", "active")
-        .gt("credits_remaining", 0)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      if (!userPack) {
-        setBooking("error");
-        setBookingError("No tenés créditos disponibles. Comprá un pack para reservar.");
-        return;
-      }
-
-      const { error: bookingError } = await supabase.from("bookings").insert({
-        user_id: user.id,
-        template_id: templateId,
-        date,
-        status: "confirmed",
-      });
-
-      if (bookingError) {
-        setBooking("error");
-        setBookingError(bookingError.message);
-        return;
-      }
-
-      await supabase
-        .from("user_packs")
-        .update({ credits_remaining: userPack.credits_remaining - 1 })
-        .eq("id", userPack.id);
-
-      await refreshProfile();
-      setBooking("success");
       router.push("/confirmacion");
     }
   };
