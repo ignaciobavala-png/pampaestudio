@@ -47,6 +47,10 @@ function LoginForm() {
       if (err) {
         setError(err);
         setLoading(false);
+      } else {
+        const { profile: p } = useAuthStore.getState();
+        const dest = p?.role === "admin" ? "/admin" : next;
+        router.replace(dest);
       }
     }
   };
