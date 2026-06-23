@@ -172,15 +172,12 @@ export default function PerfilPage() {
         </div>
       </div>
 
-      <button
-        onClick={async () => {
-          await signOut();
-          window.location.href = "/";
-        }}
-        className="mx-4 mt-2 w-[calc(100%-32px)] cursor-pointer rounded-[12px] border border-[rgba(26,25,31,.14)] bg-transparent py-3 font-sans text-[13.5px] font-medium text-muted-foreground transition-all hover:text-foreground hover:border-ink-dim"
+      <a
+        href="/api/auth/signout"
+        className="mx-4 mt-2 block w-[calc(100%-32px)] cursor-pointer rounded-[12px] border border-[rgba(26,25,31,.14)] bg-transparent py-3 text-center font-sans text-[13.5px] font-medium text-muted-foreground transition-all hover:text-foreground hover:border-ink-dim"
       >
         Cerrar sesión
-      </button>
+      </a>
     </AppShell>
   );
 }
