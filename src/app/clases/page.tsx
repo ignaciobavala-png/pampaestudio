@@ -18,6 +18,8 @@ const DAY_NAMES = [
 
 const DAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
+const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
 function getWeekDays() {
   const today = new Date();
   const todayDow = (today.getDay() + 6) % 7;
@@ -113,7 +115,7 @@ export default function ClasesPage() {
       <div className="flex items-baseline justify-between px-[22px] pb-1 pt-[10px]">
         <h2 className="font-serif text-[27px] tracking-[-0.015em]">Clases</h2>
         <span className="text-xs text-muted-foreground">
-          {day.wd} {day.n} jun
+          {day.wd} {day.n} {MONTHS[new Date(day.date + "T12:00:00").getMonth()]}
         </span>
       </div>
 

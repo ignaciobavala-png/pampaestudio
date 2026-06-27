@@ -14,7 +14,7 @@ export interface AdminClass {
 
 export interface AdminClient {
   name: string;
-  email: string;
+  phone: string;
   pack: string;
   credits: number;
   classes: number;

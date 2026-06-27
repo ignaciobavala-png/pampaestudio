@@ -78,7 +78,7 @@ export async function fetchAdminDay(
   for (const t of templates) {
     const { data: confirmed } = await supabase
       .from("bookings")
-      .select("*, profiles(full_name), user_packs(packs(name))")
+      .select("*, profiles(full_name, user_packs(packs(name)))")
       .eq("template_id", t.id)
       .eq("date", date)
       .eq("status", "confirmed")
@@ -94,11 +94,10 @@ export async function fetchAdminDay(
 
     const att: AdminClass["att"] = (confirmed || []).map((b) => {
       const p = b as unknown as {
-        profiles: { full_name: string } | null;
-        user_packs: { packs: { name: string } | null }[] | null;
+        profiles: { full_name: string; user_packs: { packs: { name: string } | null }[] | null } | null;
       };
       const name = p.profiles?.full_name || "Sin nombre";
-      const pack = p.user_packs?.[0]?.packs?.name || "Sin pack";
+      const pack = p.profiles?.user_packs?.[0]?.packs?.name || "Sin pack";
       return [name, pack, generateAvColor(name), getInitials(name)];
     });
 

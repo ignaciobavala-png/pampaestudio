@@ -52,7 +52,7 @@ export function ClientDetailModal({ open, client, onClose }: ClientDetailModalPr
             </div>
             <div>
               <div className="font-serif text-[22px]">{client.name}</div>
-              <div className="text-xs text-ink-dim mt-0.5">{client.email}</div>
+              <div className="text-xs text-ink-dim mt-0.5">{client.phone}</div>
             </div>
           </div>
 

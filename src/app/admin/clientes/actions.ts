@@ -79,7 +79,7 @@ export async function fetchClients(): Promise<AdminClient[]> {
 
     mapped.push({
       name,
-      email: p.phone || "",
+      phone: p.phone || "",
       pack: packName,
       credits,
       classes: count || 0,

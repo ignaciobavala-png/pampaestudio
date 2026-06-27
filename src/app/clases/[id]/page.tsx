@@ -10,6 +10,8 @@ import type { Database } from "@/types/database";
 
 type ClassTemplate = Database["public"]["Tables"]["class_templates"]["Row"];
 
+const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
 const CDESC: Record<string, string> = {
   Yoga: "Práctica de respiración y movimiento fluido. Mat incluido.",
   Pilates: "Trabajo de core y postura. Apto para todos los niveles.",
@@ -137,7 +139,7 @@ function DetalleContent() {
         <div className="my-[14px] border-t border-border">
           {[
             ["Instructora", template.teacher],
-            ["Día", `${dayName} ${dayN} jun`],
+            ["Día", `${dayName} ${dayN} ${MONTHS[new Date(date + "T12:00:00").getMonth()]}`],
             ["Horario", `${time} – ${end}`],
             ["Sala", template.room],
           ].map(([k, v]) => (

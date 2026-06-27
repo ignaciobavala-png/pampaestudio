@@ -21,7 +21,7 @@ export function ClientCard({ client, onClick }: ClientCardProps) {
         </div>
         <div className="min-w-0">
           <div className="text-sm font-semibold">{client.name}</div>
-          <div className="text-[11px] text-ink-dim mt-0.5">{client.email}</div>
+          <div className="text-[11px] text-ink-dim mt-0.5">{client.phone}</div>
         </div>
       </div>
       {/* Stats rows */}
