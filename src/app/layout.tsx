@@ -25,6 +25,10 @@ export const metadata: Metadata = {
   title: "Pampa Estudio — Pilates & Yoga",
   description:
     "Reservá tus clases de Pilates y Yoga. Elegí tu pack, reservá tu lugar y disfrutá.",
+  icons: {
+    icon: "/assets/flor-de-loto.png",
+    apple: "/assets/flor-de-loto.png",
+  },
 };
 
 export default function RootLayout({
