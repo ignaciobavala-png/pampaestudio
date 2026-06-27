@@ -20,11 +20,11 @@ const DAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
-function getWeekDays() {
+function getWeekDays(offset: number) {
   const today = new Date();
   const todayDow = (today.getDay() + 6) % 7;
   const monday = new Date(today);
-  monday.setDate(today.getDate() - todayDow);
+  monday.setDate(today.getDate() - todayDow + offset * 7);
 
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday);
@@ -32,6 +32,7 @@ function getWeekDays() {
     return {
       wd: DAY_LABELS[i],
       n: d.getDate(),
+      month: MONTHS[d.getMonth()],
       date: d.toISOString().slice(0, 10),
       today: d.toDateString() === today.toDateString(),
     };
@@ -42,19 +43,20 @@ export default function ClasesPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const [filter, setFilter] = useState<string>("todos");
+  const [weekOffset, setWeekOffset] = useState(0);
   const [selDay, setSelDay] = useState(() => new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
   const [templates, setTemplates] = useState<ClassTemplate[]>([]);
   const [bookingsMap, setBookingsMap] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
-  const week = getWeekDays();
+  const week = getWeekDays(weekOffset);
   const day = week[selDay];
   const filters = ["todos", "Yoga", "Pilates"];
 
   const fetchTemplates = useCallback(async () => {
     setLoading(true);
     const supabase = createClient();
-    const date = week[selDay].date;
+    const date = getWeekDays(weekOffset)[selDay].date;
 
     const { data: tmpls } = await supabase
       .from("class_templates")
@@ -80,7 +82,7 @@ export default function ClasesPage() {
     }
 
     setLoading(false);
-  }, [selDay]);
+  }, [selDay, weekOffset]);
 
   useEffect(() => {
     fetchTemplates();
@@ -112,11 +114,26 @@ export default function ClasesPage() {
 
       <FunnelSteps current={3} />
 
-      <div className="flex items-baseline justify-between px-[22px] pb-1 pt-[10px]">
+      <div className="flex items-center justify-between px-[22px] pb-1 pt-[10px]">
         <h2 className="font-serif text-[27px] tracking-[-0.015em]">Clases</h2>
-        <span className="text-xs text-muted-foreground">
-          {day.wd} {day.n} {MONTHS[new Date(day.date + "T12:00:00").getMonth()]}
-        </span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => { setWeekOffset((o) => o - 1); setSelDay(0); }}
+            disabled={weekOffset <= 0}
+            className="flex size-8 items-center justify-center rounded-[10px] border border-[rgba(26,25,31,.14)] bg-card text-base cursor-pointer transition-all hover:bg-muted disabled:opacity-30 disabled:cursor-default"
+          >
+            ‹
+          </button>
+          <span className="min-w-[72px] text-center text-xs text-muted-foreground">
+            {weekOffset === 0 ? "Esta semana" : weekOffset === 1 ? "Próxima sem." : `+${weekOffset} sem.`}
+          </span>
+          <button
+            onClick={() => { setWeekOffset((o) => o + 1); setSelDay(0); }}
+            className="flex size-8 items-center justify-center rounded-[10px] border border-[rgba(26,25,31,.14)] bg-card text-base cursor-pointer transition-all hover:bg-muted"
+          >
+            ›
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-[7px] overflow-x-auto px-[22px] pb-1 pt-[14px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -176,8 +193,7 @@ export default function ClasesPage() {
 
       <div className="px-[22px] pb-[2px]">
         <span className="text-[11px] font-semibold tracking-[0.1em] uppercase text-ink-dim">
-          {day.today ? "Hoy · " : ""}
-          {DAY_NAMES[selDay]}
+          {day.today ? "Hoy · " : ""}{DAY_NAMES[selDay]} {day.n} {day.month}
         </span>
       </div>
 

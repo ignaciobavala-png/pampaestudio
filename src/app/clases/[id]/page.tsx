@@ -92,7 +92,7 @@ function DetalleContent() {
       return;
     }
 
-    const res = result as { status?: string; error?: string; position?: number };
+    const res = result as { status?: string; error?: string; position?: number; credits_remaining?: number };
 
     if (res.error) {
       setBooking("error");
@@ -103,11 +103,21 @@ function DetalleContent() {
     await refreshProfile();
     setBooking("success");
 
-    if (res.status === "waitlist") {
-      router.push("/confirmacion?wl=true");
-    } else {
-      router.push("/confirmacion");
-    }
+    const monthNames = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+    const dateObj = new Date(date + "T12:00:00");
+    const dayLabel = `${dayName} ${dayN} ${monthNames[dateObj.getMonth()]}`;
+
+    const sp = new URLSearchParams({
+      name: template?.name ?? "",
+      time: `${time} – ${end}`,
+      teacher: template?.teacher ?? "",
+      room: template?.room ?? "",
+      day: dayLabel,
+      credits: String(res.credits_remaining ?? ""),
+      wl: res.status === "waitlist" ? "true" : "false",
+      pos: String(res.position ?? ""),
+    });
+    router.push(`/confirmacion?${sp.toString()}`);
   };
 
   return (

@@ -37,6 +37,7 @@ export default function AgendaPage() {
     packCredits: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!user) {
@@ -85,10 +86,18 @@ export default function AgendaPage() {
     fetchData();
   }, [fetchData]);
 
+  const handleCancel = async (bookingId: string) => {
+    setCancelling(bookingId);
+    const supabase = createClient();
+    await supabase.rpc("cancel_booking", { p_booking_id: bookingId });
+    setCancelling(null);
+    fetchData();
+  };
+
   if (!user) {
     return (
       <AppShell>
-        <AgendaHeader calMonth={calMonth} calYear={calYear} setCalMonth={setCalMonth} setCalYear={setCalYear} />
+        <AgendaHeader calMonth={calMonth} calYear={calYear} setCalMonth={setCalMonth} setCalYear={setCalYear} showLogin />
         <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
           <div className="font-serif italic text-[30px] text-[#DBDAD6]">○</div>
           <p className="mt-3 text-[13px] text-muted-foreground">
@@ -162,6 +171,7 @@ export default function AgendaPage() {
         calYear={calYear}
         setCalMonth={setCalMonth}
         setCalYear={setCalYear}
+        showLogin={false}
       />
 
       <div className="px-[22px] pb-[2px] pt-[6px]">
@@ -243,14 +253,22 @@ export default function AgendaPage() {
                     {monthName}
                   </div>
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="font-serif text-base">
                     {cls?.name || "Clase"}
                   </div>
                   <div className="mt-[2px] text-xs text-muted-foreground">
-                    {cls?.time_start?.slice(0, 5) || ""} · {cls?.teacher || ""} ·{" "}
-                    {cls?.room || ""}
+                    {cls?.time_start?.slice(0, 5) || ""} · {cls?.teacher || ""} · {cls?.room || ""}
                   </div>
+                  {(b.status === "confirmed" || b.status === "waitlist") && (
+                    <button
+                      onClick={() => handleCancel(b.id)}
+                      disabled={cancelling === b.id}
+                      className="mt-[6px] text-[11px] text-muted-foreground underline underline-offset-2 cursor-pointer hover:text-foreground disabled:opacity-50"
+                    >
+                      {cancelling === b.id ? "Cancelando..." : "Cancelar reserva"}
+                    </button>
+                  )}
                 </div>
                 <span
                   className={cn(
@@ -277,11 +295,13 @@ function AgendaHeader({
   calYear,
   setCalMonth,
   setCalYear,
+  showLogin,
 }: {
   calMonth: number;
   calYear: number;
   setCalMonth: (m: number | ((m: number) => number)) => void;
   setCalYear: (y: number | ((y: number) => number)) => void;
+  showLogin?: boolean;
 }) {
   return (
     <>
@@ -293,12 +313,14 @@ function AgendaHeader({
             className="h-[152px] w-auto brightness-0 -my-[66.5px] -ml-3"
           />
         </div>
-        <Link
-          href="/login"
-          className="rounded-[100px] bg-bordo-surface px-[14px] py-[7px] text-[13px] font-semibold text-primary transition-colors hover:bg-[#e0dbf9]"
-        >
-          Entrar
-        </Link>
+        {showLogin && (
+          <Link
+            href="/login"
+            className="rounded-[100px] bg-bordo-surface px-[14px] py-[7px] text-[13px] font-semibold text-primary transition-colors hover:bg-[#e0dbf9]"
+          >
+            Entrar
+          </Link>
+        )}
       </header>
 
       <div className="flex items-center justify-between px-[22px] pb-1 pt-[10px]">
