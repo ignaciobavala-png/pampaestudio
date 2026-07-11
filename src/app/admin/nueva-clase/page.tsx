@@ -73,7 +73,7 @@ export default function NuevaClasePage() {
         </p>
       </div>
 
-      <div className="max-w-[680px] rounded-[18px] border border-[rgba(26,25,31,.085)] bg-white p-[22px]">
+      <div data-tour="new-class-form" className="max-w-[680px] rounded-[18px] border border-[rgba(26,25,31,.085)] bg-white p-[22px]">
         <div className="grid grid-cols-2 gap-[14px] mb-4 max-[860px]:grid-cols-1">
           <div className="flex flex-col gap-1.5 col-span-2 max-[860px]:col-span-1">
             <label className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-dim">
