@@ -21,12 +21,15 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [registered, setRegistered] = useState(false);
 
+  // Redirigimos apenas hay sesión (user), sin esperar el profile: en prod
+  // el fetch del profile puede colgarse (lock de @supabase/ssr) y no debe
+  // bloquear el redirect. El rol se revalida server-side en el middleware.
   useEffect(() => {
-    if (user && profile) {
-      const dest = profile.role === "admin" ? "/admin" : next;
+    if (user) {
+      const dest = profile?.role === "admin" || isAdminLogin ? "/admin" : next;
       router.replace(dest);
     }
-  }, [user, profile, router, next]);
+  }, [user, profile, router, next, isAdminLogin]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
