@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { WeekCalendar } from "@/components/admin/week-calendar";
 import { fetchWeekData } from "./actions";
 import type { WeekEvent } from "./actions";
+import { toLocalDateStr } from "@/lib/utils";
 
 function getWeekDays(date: Date) {
   const todayDow = (date.getDay() + 6) % 7;
@@ -17,7 +18,7 @@ function getWeekDays(date: Date) {
     return {
       wd: ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab"][i],
       n: d.getDate(),
-      date: d.toISOString().slice(0, 10),
+      date: toLocalDateStr(d),
       today: d.toDateString() === today.toDateString(),
     };
   });

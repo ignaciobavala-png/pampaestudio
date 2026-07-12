@@ -7,7 +7,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { FunnelSteps } from "@/components/nav/funnel-steps";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { cn } from "@/lib/utils";
+import { cn, toLocalDateStr } from "@/lib/utils";
 import type { Database } from "@/types/database";
 
 type ClassTemplate = Database["public"]["Tables"]["class_templates"]["Row"];
@@ -33,7 +33,7 @@ function getWeekDays(offset: number) {
       wd: DAY_LABELS[i],
       n: d.getDate(),
       month: MONTHS[d.getMonth()],
-      date: d.toISOString().slice(0, 10),
+      date: toLocalDateStr(d),
       today: d.toDateString() === today.toDateString(),
     };
   });

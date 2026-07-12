@@ -9,6 +9,7 @@ import { CancelModal } from "@/components/admin/cancel-modal";
 import { ToastProvider, useToast } from "@/components/admin/toast";
 import { fetchAdminDay, updateClassMaxCapacity, cancelClass } from "./actions";
 import type { AdminClass } from "@/lib/admin-types";
+import { toLocalDateStr } from "@/lib/utils";
 
 function getWeekDays() {
   const today = new Date();
@@ -34,7 +35,7 @@ function getDateForDay(dayIndex: number): string {
   monday.setDate(today.getDate() - todayDow);
   const target = new Date(monday);
   target.setDate(monday.getDate() + dayIndex);
-  return target.toISOString().slice(0, 10);
+  return toLocalDateStr(target);
 }
 
 const DAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
