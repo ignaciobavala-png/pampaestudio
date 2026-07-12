@@ -95,13 +95,15 @@ export default function SemanaPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="text-ink-dim">Cargando...</div>
-        </div>
-      ) : (
-        <WeekCalendar days={days} data={data} />
-      )}
+      <div data-tour="week">
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="text-ink-dim">Cargando...</div>
+          </div>
+        ) : (
+          <WeekCalendar days={days} data={data} />
+        )}
+      </div>
     </div>
   );
 }

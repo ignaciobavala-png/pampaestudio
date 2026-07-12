@@ -1,5 +1,6 @@
 import { AdminTopbar } from "@/components/admin/admin-topbar";
 import { AdminBotNav } from "@/components/admin/admin-botnav";
+import { FeatureTour } from "@/components/admin/feature-tour";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -9,6 +10,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {children}
       </div>
       <AdminBotNav />
+      <FeatureTour />
     </div>
   );
 }

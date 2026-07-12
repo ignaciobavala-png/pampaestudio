@@ -126,7 +126,7 @@ function HoyContent() {
 
   return (
     <>
-      <div className="mb-6 grid grid-cols-4 gap-3 max-[860px]:grid-cols-2 max-[480px]:grid-cols-2 max-[480px]:gap-2">
+      <div data-tour="kpis" className="mb-6 grid grid-cols-4 gap-3 max-[860px]:grid-cols-2 max-[480px]:grid-cols-2 max-[480px]:gap-2">
         <KPICard
           label="Clases hoy"
           value={loading ? "—" : String(kpis.total)}
@@ -153,19 +153,21 @@ function HoyContent() {
         />
       </div>
 
-      <DayTabs
-        days={weekDays}
-        activeIndex={dayIndex}
-        onSelect={setDayIndex}
-        meta={`${kpis.total} clases`}
-      />
+      <div data-tour="day-tabs">
+        <DayTabs
+          days={weekDays}
+          activeIndex={dayIndex}
+          onSelect={setDayIndex}
+          meta={`${kpis.total} clases`}
+        />
+      </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <div className="text-ink-dim">Cargando...</div>
         </div>
       ) : (
-        <div className="grid grid-cols-[320px_1fr] items-start gap-4 max-[860px]:grid-cols-1">
+        <div data-tour="class-list" className="grid grid-cols-[320px_1fr] items-start gap-4 max-[860px]:grid-cols-1">
           <aside
             className={
               detailVisible

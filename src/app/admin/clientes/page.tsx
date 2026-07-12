@@ -76,7 +76,7 @@ export default function ClientesPage() {
         )}
       </div>
 
-      <div className="mb-[18px]">
+      <div data-tour="clientes-search" className="mb-[18px]">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -95,6 +95,7 @@ export default function ClientesPage() {
         </div>
       ) : (
         <div
+          data-tour="client-grid"
           className="grid gap-3 max-[860px]:grid-cols-1"
           style={{ gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))" }}
         >
