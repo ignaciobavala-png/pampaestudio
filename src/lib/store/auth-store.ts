@@ -57,18 +57,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     if (error) return { error: error.message };
 
-    const user = data.user;
-    let profile: Profile | null = null;
-    if (user) {
-      const { data: p } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-      profile = p;
-    }
-
-    set({ user, profile, loading: false, initialized: true });
+    // Seteamos el user y devolvemos enseguida. El profile se carga en segundo
+    // plano: encadenar una query PostgREST justo después de signInWithPassword
+    // en el browser client puede quedar colgada (deadlock del LockManager),
+    // y no debe bloquear el redirect. El rol se revalida server-side en el
+    // middleware al entrar a /admin.
+    set({ user: data.user, loading: false, initialized: true });
+    void get().refreshProfile();
     return { error: null };
   },
 
