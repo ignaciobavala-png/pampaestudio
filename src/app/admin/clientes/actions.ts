@@ -67,7 +67,7 @@ export async function fetchClients(): Promise<AdminClient[]> {
   const [{ data: profiles }, { data: authData }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("*, user_packs(id, pack_id, credits_remaining, packs(name, credits))")
+      .select("*, user_packs!user_packs_user_id_fkey(id, pack_id, credits_remaining, packs(name, credits))")
       .eq("role", "client"),
     adminClient.auth.admin.listUsers({ perPage: 1000 }),
   ]);
