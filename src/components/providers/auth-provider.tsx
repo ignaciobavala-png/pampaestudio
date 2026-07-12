@@ -17,10 +17,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const supabase = createClient();
-    const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // OJO: el callback NO debe ser async ni await-ear llamadas de Supabase.
+    // Corre con el lock de auth (Navigator LockManager) tomado; si adentro
+    // llamás otra operación que necesita ese lock (getSession dentro del
+    // select de refreshProfile) se produce un deadlock que cuelga
+    // signInWithPassword. Por eso el fetch del profile se difiere con
+    // setTimeout(…, 0), para ejecutarse una vez liberado el lock.
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         setUser(session?.user ?? null);
-        if (session?.user) await refreshProfile();
+        if (session?.user) setTimeout(() => { refreshProfile(); }, 0);
       }
       if (event === "SIGNED_OUT") {
         setUser(null);

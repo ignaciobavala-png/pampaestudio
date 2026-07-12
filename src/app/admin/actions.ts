@@ -78,7 +78,7 @@ export async function fetchAdminDay(
   for (const t of templates) {
     const { data: confirmed } = await supabase
       .from("bookings")
-      .select("*, profiles(full_name, user_packs(packs(name)))")
+      .select("*, profiles(full_name, user_packs!user_packs_user_id_fkey(packs(name)))")
       .eq("template_id", t.id)
       .eq("date", date)
       .eq("status", "confirmed")
