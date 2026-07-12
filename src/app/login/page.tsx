@@ -47,14 +47,29 @@ function LoginForm() {
         setMode("login");
       }
     } else {
-      const { error: err } = await signIn(email, password);
-      if (err) {
+      const dest = isAdminLogin ? "/admin" : next;
+      // La promesa de signInWithPassword puede no resolver por un deadlock
+      // conocido del browser client de @supabase/ssr, pero la cookie de
+      // sesión sí se escribe. Detectamos el login exitoso por la aparición
+      // de la cookie y hacemos un redirect de página completa (no depende
+      // de que la promesa resuelva). El rol se revalida en el middleware.
+      let redirected = false;
+      const iv = window.setInterval(() => {
+        if (document.cookie.includes("sb-")) {
+          redirected = true;
+          window.clearInterval(iv);
+          window.location.href = dest;
+        }
+      }, 200);
+      window.setTimeout(() => window.clearInterval(iv), 8000);
+
+      const { error: err } = await signIn(email, password).catch(() => ({
+        error: "No se pudo iniciar sesión. Revisá tu conexión.",
+      }));
+      if (err && !redirected) {
+        window.clearInterval(iv);
         setError(err);
         setLoading(false);
-      } else {
-        const { profile: p } = useAuthStore.getState();
-        const dest = p?.role === "admin" ? "/admin" : next;
-        router.replace(dest);
       }
     }
   };
