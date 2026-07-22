@@ -7,7 +7,8 @@ import { ClassListRow } from "@/components/admin/class-list-row";
 import { ClassDetail } from "@/components/admin/class-detail";
 import { CancelModal } from "@/components/admin/cancel-modal";
 import { ToastProvider, useToast } from "@/components/admin/toast";
-import { fetchAdminDay, updateClassMaxCapacity, cancelClass } from "./actions";
+import { fetchAdminDay, updateClassMaxCapacity, cancelClass, adminBookSpot, adminRescheduleBooking } from "./actions";
+import { fetchMonthlyRevenue } from "./clientes/actions";
 import type { AdminClass } from "@/lib/admin-types";
 import { toLocalDateStr } from "@/lib/utils";
 
@@ -63,8 +64,13 @@ function HoyContent() {
   const [cancelTarget, setCancelTarget] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [kpis, setKpis] = useState({ total: 0, ocupacion: 0, espera: 0 });
+  const [revenue, setRevenue] = useState<number | null>(null);
 
   const weekDays = getWeekDays();
+
+  useEffect(() => {
+    fetchMonthlyRevenue().then(setRevenue).catch(() => setRevenue(null));
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -123,6 +129,28 @@ function HoyContent() {
     fetchData();
   }, [cancelTarget, classes, dayIndex, toast, fetchData]);
 
+  const handleAddStudent = useCallback(
+    async (userId: string) => {
+      if (selectedIndex === null) return;
+      const cls = classes[selectedIndex];
+      if (!cls) return;
+      const date = getDateForDay(dayIndex);
+      const res = await adminBookSpot(userId, cls.templateId, date);
+      toast(res.ok ? res.message : res.error);
+      if (res.ok) fetchData();
+    },
+    [selectedIndex, classes, dayIndex, toast, fetchData]
+  );
+
+  const handleReschedule = useCallback(
+    async (bookingId: string, newTemplateId: string, newDate: string) => {
+      const res = await adminRescheduleBooking(bookingId, newTemplateId, newDate);
+      toast(res.ok ? res.message : res.error);
+      if (res.ok) fetchData();
+    },
+    [toast, fetchData]
+  );
+
   const detailVisible = selectedIndex !== null;
 
   return (
@@ -148,7 +176,7 @@ function HoyContent() {
         />
         <KPICard
           label="Ingresos mes"
-          value="—"
+          value={revenue === null ? "—" : `$${revenue.toLocaleString("es-AR")}`}
           detail=""
           valueSize="small"
         />
@@ -215,6 +243,9 @@ function HoyContent() {
                 onClose={closeDetail}
                 onMaxChange={handleMaxChange}
                 onCancelClass={openCancel}
+                onAddStudent={handleAddStudent}
+                onReschedule={handleReschedule}
+                date={getDateForDay(dayIndex)}
                 dateLabel={getDateLabel(dayIndex)}
               />
             ) : (

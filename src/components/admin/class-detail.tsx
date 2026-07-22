@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { CapacityStepper } from "@/components/admin/capacity-stepper";
 import { StudentRow } from "@/components/admin/student-row";
 import { WaitlistRow } from "@/components/admin/waitlist-row";
-import type { AdminClass } from "@/lib/admin-types";
+import { AddStudentModal } from "@/components/admin/add-student-modal";
+import { RescheduleModal } from "@/components/admin/reschedule-modal";
+import type { AdminClass, AdminStudent } from "@/lib/admin-types";
 
 interface ClassDetailProps {
   cls: AdminClass;
@@ -12,11 +14,16 @@ interface ClassDetailProps {
   onClose: () => void;
   onMaxChange: (index: number, newMax: number) => void;
   onCancelClass: () => void;
+  onAddStudent: (userId: string) => Promise<void>;
+  onReschedule: (bookingId: string, newTemplateId: string, newDate: string) => Promise<void>;
   index: number;
+  date: string;
   dateLabel: string;
 }
 
-export function ClassDetail({ cls, max, onClose, onMaxChange, onCancelClass, index, dateLabel }: ClassDetailProps) {
+export function ClassDetail({ cls, max, onClose, onMaxChange, onCancelClass, onAddStudent, onReschedule, index, date, dateLabel }: ClassDetailProps) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [moveTarget, setMoveTarget] = useState<AdminStudent | null>(null);
   const { name, type, room, teacher, time, end, taken } = cls;
   const free = max - taken;
   const pct = Math.round((taken / max) * 100);
@@ -108,8 +115,11 @@ export function ClassDetail({ cls, max, onClose, onMaxChange, onCancelClass, ind
               Alumnas reservadas · {taken}
             </span>
             <div className="flex gap-1.5">
-              <button className="cursor-pointer rounded-[7px] border border-[rgba(26,25,31,.14)] bg-transparent px-2.5 py-1 text-[11px] font-medium text-ink-dim transition-colors hover:text-foreground hover:bg-[#EFEFED]">
-                Asistencia
+              <button
+                onClick={() => setShowAdd(true)}
+                className="cursor-pointer rounded-[7px] border border-primary bg-bordo-surface px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:bg-[#e0dbf9]"
+              >
+                + Agregar
               </button>
               <button className="cursor-pointer rounded-[7px] border border-[rgba(26,25,31,.14)] bg-transparent px-2.5 py-1 text-[11px] font-medium text-ink-dim transition-colors hover:text-foreground hover:bg-[#EFEFED]">
                 Exportar
@@ -117,9 +127,21 @@ export function ClassDetail({ cls, max, onClose, onMaxChange, onCancelClass, ind
             </div>
           </div>
           <div>
-            {cls.att.map(([name, pack, avColor, initials]) => (
-              <StudentRow key={initials} name={name} pack={pack} avColor={avColor} initials={initials} />
-            ))}
+            {cls.att.length === 0 ? (
+              <div className="px-1 py-2 text-[13px] text-ink-dim">Sin alumnas reservadas todavía.</div>
+            ) : (
+              cls.att.map((s) => (
+                <StudentRow
+                  key={s.bookingId}
+                  name={s.name}
+                  pack={s.pack}
+                  avColor={s.avColor}
+                  initials={s.initials}
+                  medicalNotes={s.medicalNotes}
+                  onMove={() => setMoveTarget(s)}
+                />
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -154,6 +176,29 @@ export function ClassDetail({ cls, max, onClose, onMaxChange, onCancelClass, ind
           )}
         </div>
       </div>
+
+      <AddStudentModal
+        open={showAdd}
+        className={name}
+        excludeUserIds={cls.att.map((s) => s.userId)}
+        onClose={() => setShowAdd(false)}
+        onConfirm={async (userId) => {
+          await onAddStudent(userId);
+          setShowAdd(false);
+        }}
+      />
+
+      <RescheduleModal
+        open={moveTarget !== null}
+        studentName={moveTarget?.name ?? ""}
+        currentTemplateId={cls.templateId}
+        defaultDate={date}
+        onClose={() => setMoveTarget(null)}
+        onConfirm={async (newTemplateId, newDate) => {
+          if (moveTarget) await onReschedule(moveTarget.bookingId, newTemplateId, newDate);
+          setMoveTarget(null);
+        }}
+      />
     </div>
   );
 }

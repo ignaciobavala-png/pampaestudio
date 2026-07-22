@@ -4,7 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import type { Database } from "@/types/database";
-import type { AdminClient, AdminPack } from "@/lib/admin-types";
+import type { AdminClient, AdminPack, ClientHistoryItem } from "@/lib/admin-types";
 
 function generateAvColor(name: string): string {
   const colors = [
@@ -60,6 +60,9 @@ export async function fetchClients(): Promise<AdminClient[]> {
       id: string;
       pack_id: string;
       credits_remaining: number;
+      status: string;
+      expires_at: string | null;
+      frozen_at: string | null;
       packs: { name: string; credits: number } | null;
     }[];
   };
@@ -67,7 +70,7 @@ export async function fetchClients(): Promise<AdminClient[]> {
   const [{ data: profiles }, { data: authData }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("*, user_packs!user_packs_user_id_fkey(id, pack_id, credits_remaining, packs(name, credits))")
+      .select("*, user_packs!user_packs_user_id_fkey(id, pack_id, credits_remaining, status, expires_at, frozen_at, packs(name, credits))")
       .eq("role", "client"),
     adminClient.auth.admin.listUsers({ perPage: 1000 }),
   ]);
@@ -81,7 +84,12 @@ export async function fetchClients(): Promise<AdminClient[]> {
   const mapped: AdminClient[] = [];
 
   for (const p of profiles as unknown as ProfileWithPacks[]) {
-    const activePack = p.user_packs?.[0];
+    // Pack vigente: preferir activo, luego congelado (ignorar expirados)
+    const packs = p.user_packs || [];
+    const activePack =
+      packs.find((up) => up.status === "active") ??
+      packs.find((up) => up.status === "frozen") ??
+      null;
     const packName = activePack?.packs?.name || "Sin pack";
     const packId = activePack?.pack_id || null;
     const credits = activePack?.credits_remaining || 0;
@@ -103,12 +111,17 @@ export async function fetchClients(): Promise<AdminClient[]> {
       phone: p.phone || "",
       pack: packName,
       packId,
+      userPackId: activePack?.id || null,
+      packStatus: activePack?.status || null,
+      packExpiresAt: activePack?.expires_at || null,
       credits,
       classes: count || 0,
       av: generateAvColor(name),
       ini: getInitials(name),
       since,
       isApproved: p.is_approved,
+      medicalNotes: p.medical_notes || "",
+      experienceLevel: p.experience_level || null,
     });
   }
 
@@ -125,7 +138,25 @@ export async function fetchPacks(): Promise<AdminPack[]> {
   return (data as AdminPack[]) || [];
 }
 
+/**
+ * Defensa en profundidad: verifica que la sesión sea admin antes de operar con
+ * service_role. Devuelve el id del admin. Lanza si no está autorizado.
+ */
+async function assertAdmin(): Promise<string> {
+  const supabase = await getSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autenticado");
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+  if (profile?.role !== "admin") throw new Error("Acceso denegado");
+  return user.id;
+}
+
 export async function setApproval(userId: string, approved: boolean): Promise<void> {
+  await assertAdmin();
   const adminClient = getAdminClient();
   await adminClient
     .from("profiles")
@@ -134,22 +165,29 @@ export async function setApproval(userId: string, approved: boolean): Promise<vo
 }
 
 export async function assignPack(userId: string, packId: string): Promise<void> {
+  const adminId = await assertAdmin();
   const adminClient = getAdminClient();
 
   const { data: pack } = await adminClient
     .from("packs")
-    .select("credits")
+    .select("credits, duration_days")
     .eq("id", packId)
     .single();
 
   if (!pack) return;
 
-  // Expire existing active packs
+  // Expire existing active/frozen packs
   await adminClient
     .from("user_packs")
     .update({ status: "expired" })
     .eq("user_id", userId)
-    .eq("status", "active");
+    .in("status", ["active", "frozen"]);
+
+  const now = new Date();
+  const expiresAt =
+    pack.duration_days != null
+      ? new Date(now.getTime() + pack.duration_days * 24 * 60 * 60 * 1000).toISOString()
+      : null;
 
   // Assign new pack
   await adminClient.from("user_packs").insert({
@@ -157,7 +195,179 @@ export async function assignPack(userId: string, packId: string): Promise<void> 
     pack_id: packId,
     credits_remaining: pack.credits,
     status: "active",
-    starts_at: new Date().toISOString(),
-    assigned_by: userId,
+    starts_at: now.toISOString(),
+    expires_at: expiresAt,
+    assigned_by: adminId,
   });
+}
+
+/** Perfil médico / observaciones (visible para la profe en la clase). */
+export async function updateClientMedical(
+  userId: string,
+  medicalNotes: string,
+  experienceLevel: string | null
+): Promise<void> {
+  await assertAdmin();
+  const adminClient = getAdminClient();
+  await adminClient
+    .from("profiles")
+    .update({
+      medical_notes: medicalNotes.trim(),
+      experience_level: experienceLevel?.trim() || null,
+    })
+    .eq("id", userId);
+}
+
+/** Congela un pack (vacaciones): guarda el momento de congelamiento. */
+export async function freezePack(userPackId: string): Promise<void> {
+  await assertAdmin();
+  const adminClient = getAdminClient();
+  await adminClient
+    .from("user_packs")
+    .update({ status: "frozen", frozen_at: new Date().toISOString() })
+    .eq("id", userPackId)
+    .eq("status", "active");
+}
+
+/** Descongela un pack: extiende expires_at por el tiempo que estuvo congelado. */
+export async function unfreezePack(userPackId: string): Promise<void> {
+  await assertAdmin();
+  const adminClient = getAdminClient();
+
+  const { data: up } = await adminClient
+    .from("user_packs")
+    .select("expires_at, frozen_at, status")
+    .eq("id", userPackId)
+    .single();
+
+  if (!up || up.status !== "frozen") return;
+
+  let newExpires = up.expires_at;
+  if (up.expires_at && up.frozen_at) {
+    const frozenMs = Date.now() - new Date(up.frozen_at).getTime();
+    newExpires = new Date(new Date(up.expires_at).getTime() + frozenMs).toISOString();
+  }
+
+  await adminClient
+    .from("user_packs")
+    .update({ status: "active", frozen_at: null, expires_at: newExpires })
+    .eq("id", userPackId);
+}
+
+/** Historial de clases de una alumna (pasadas + canceladas), más recientes primero. */
+export async function fetchClientHistory(userId: string): Promise<ClientHistoryItem[]> {
+  await assertAdmin();
+  const supabase = await getSupabase();
+  const { data } = await supabase
+    .from("bookings")
+    .select("id, date, status, class_templates(name, time_start)")
+    .eq("user_id", userId)
+    .order("date", { ascending: false })
+    .limit(50);
+
+  return ((data as unknown as {
+    id: string;
+    date: string;
+    status: string;
+    class_templates: { name: string; time_start: string } | null;
+  }[]) || []).map((b) => ({
+    id: b.id,
+    date: b.date,
+    status: b.status,
+    className: b.class_templates?.name || "Clase",
+    time: b.class_templates?.time_start?.slice(0, 5) || "",
+  }));
+}
+
+/** Ingresos del mes actual: suma de precios de packs asignados este mes. */
+export async function fetchMonthlyRevenue(): Promise<number> {
+  await assertAdmin();
+  const supabase = await getSupabase();
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+  const { data } = await supabase
+    .from("user_packs")
+    .select("created_at, packs(price)")
+    .gte("created_at", start);
+
+  const rows = (data as unknown as { packs: { price: number } | null }[]) || [];
+  const totalCents = rows.reduce((sum, r) => sum + (r.packs?.price || 0), 0);
+  return Math.round(totalCents / 100);
+}
+
+export type CreateUserResult =
+  | { ok: true; message: string; tempPassword?: string }
+  | { ok: false; error: string };
+
+/**
+ * 1.1a — Alta de alumna SIN acceso a la app (tercero / walk-in).
+ * Crea solo un registro en profiles (id propio, sin cuenta de Auth).
+ * El admin le reserva las clases; no puede iniciar sesión.
+ */
+export async function createManagedUser(
+  fullName: string,
+  phone: string
+): Promise<CreateUserResult> {
+  await assertAdmin();
+  const name = fullName.trim();
+  if (!name) return { ok: false, error: "El nombre es obligatorio" };
+
+  const adminClient = getAdminClient();
+  const { error } = await adminClient.from("profiles").insert({
+    id: crypto.randomUUID(),
+    full_name: name,
+    role: "client",
+    is_approved: true,
+    phone: phone.trim() || null,
+  });
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, message: "Alumna creada (sin acceso a la app)" };
+}
+
+/**
+ * 1.1b — Alta de alumna CON acceso a la app.
+ * Crea la cuenta en Auth (el trigger handle_new_user genera el profile) y la
+ * deja aprobada. Si no se pasa contraseña, se genera una temporal y se devuelve
+ * para que el admin la comparta (el SMTP para invitaciones aún no está configurado).
+ */
+export async function createAuthUser(
+  fullName: string,
+  email: string,
+  phone: string,
+  password?: string
+): Promise<CreateUserResult> {
+  await assertAdmin();
+  const name = fullName.trim();
+  const mail = email.trim().toLowerCase();
+  if (!name) return { ok: false, error: "El nombre es obligatorio" };
+  if (!mail) return { ok: false, error: "El email es obligatorio" };
+
+  const adminClient = getAdminClient();
+  const generated = !password;
+  const pass = password?.trim() || `Pampa${Math.random().toString(36).slice(2, 8)}!`;
+
+  const { data, error } = await adminClient.auth.admin.createUser({
+    email: mail,
+    password: pass,
+    email_confirm: true,
+    user_metadata: { full_name: name },
+  });
+
+  if (error) return { ok: false, error: error.message };
+  const newId = data.user?.id;
+  if (!newId) return { ok: false, error: "No se pudo crear la cuenta" };
+
+  // El trigger ya creó el profile con full_name; completamos teléfono y aprobación.
+  await adminClient
+    .from("profiles")
+    .update({ is_approved: true, phone: phone.trim() || null })
+    .eq("id", newId);
+
+  return {
+    ok: true,
+    message: "Alumna creada con acceso a la app",
+    tempPassword: generated ? pass : undefined,
+  };
 }

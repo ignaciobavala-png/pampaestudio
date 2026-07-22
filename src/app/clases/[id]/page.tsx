@@ -30,6 +30,8 @@ function DetalleContent() {
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [bookingError, setBookingError] = useState<string | null>(null);
+  const [recurring, setRecurring] = useState(false);
+  const RECUR_WEEKS = 4;
 
   useEffect(() => {
     if (!templateId || !date) return;
@@ -80,6 +82,38 @@ function DetalleContent() {
     setBooking("loading");
     setBookingError(null);
     const supabase = createClient();
+
+    // Reserva recurrente: materializa las próximas RECUR_WEEKS semanas de una vez.
+    if (recurring) {
+      const { data: recResult, error: recError } = await supabase.rpc("book_recurring", {
+        p_template_id: templateId,
+        p_start_date: date,
+        p_weeks: RECUR_WEEKS,
+      });
+
+      if (recError) {
+        setBooking("error");
+        setBookingError(recError.message);
+        return;
+      }
+
+      const rec = recResult as { error?: string; confirmed?: number; waitlist?: number; errors?: number };
+      if (rec.error) {
+        setBooking("error");
+        setBookingError(rec.error);
+        return;
+      }
+      if ((rec.confirmed ?? 0) + (rec.waitlist ?? 0) === 0) {
+        setBooking("error");
+        setBookingError("No se pudo reservar ninguna fecha (sin créditos o ya reservadas).");
+        return;
+      }
+
+      await refreshProfile();
+      setBooking("success");
+      router.push("/agenda");
+      return;
+    }
 
     const { data: result, error } = await supabase.rpc("book_spot", {
       p_template_id: templateId,
@@ -200,6 +234,27 @@ function DetalleContent() {
           </p>
         )}
 
+        <button
+          type="button"
+          onClick={() => setRecurring((r) => !r)}
+          className="mb-3 flex w-full items-center gap-3 rounded-[12px] border border-border bg-card px-4 py-3 text-left transition-colors hover:border-ink-dim"
+        >
+          <span
+            className={`flex size-[20px] shrink-0 items-center justify-center rounded-[6px] border-[1.5px] transition-colors ${
+              recurring ? "border-primary bg-primary text-white" : "border-[rgba(26,25,31,.28)]"
+            }`}
+          >
+            {recurring && "✓"}
+          </span>
+          <span className="text-[13px] leading-snug">
+            <span className="font-semibold">Reservar {dayName || "este día"} por {RECUR_WEEKS} semanas</span>
+            <br />
+            <span className="text-muted-foreground text-[12px]">
+              Anota este mismo horario las próximas {RECUR_WEEKS} semanas.
+            </span>
+          </span>
+        </button>
+
         <Button
           className="h-auto w-full rounded-[14px] py-[15px] text-[15px] font-semibold"
           disabled={booking === "loading"}
@@ -207,9 +262,11 @@ function DetalleContent() {
         >
           {booking === "loading"
             ? "Procesando..."
-            : full
-              ? "Unirme a la lista de espera"
-              : "Reservar mi lugar"}
+            : recurring
+              ? `Reservar ${RECUR_WEEKS} semanas`
+              : full
+                ? "Unirme a la lista de espera"
+                : "Reservar mi lugar"}
         </Button>
       </div>
     </AppShell>

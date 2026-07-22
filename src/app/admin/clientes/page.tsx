@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { ClientCard } from "@/components/admin/client-card";
 import { ClientDetailModal } from "@/components/admin/client-detail-modal";
+import { AddClientModal } from "@/components/admin/add-client-modal";
 import { fetchClients } from "./actions";
 import type { AdminClient } from "@/lib/admin-types";
 
@@ -36,6 +37,7 @@ export default function ClientesPage() {
   const [clients, setClients] = useState<AdminClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedClient, setSelectedClient] = useState<AdminClient | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
 
   useEffect(() => {
     fetchClients().then((data) => {
@@ -63,17 +65,26 @@ export default function ClientesPage() {
           </p>
         </div>
 
-        {!loading && clients.length > 0 && (
+        <div className="flex shrink-0 items-center gap-2">
+          {!loading && clients.length > 0 && (
+            <button
+              onClick={() => exportCSV(filtered)}
+              className="flex items-center gap-2 rounded-[12px] border border-[rgba(26,25,31,.14)] bg-white px-4 py-[9px] text-[13px] font-medium text-foreground transition-colors hover:bg-muted"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M7 1v8M4 6l3 3 3-3M2 10v1.5A1.5 1.5 0 003.5 13h7A1.5 1.5 0 0012 11.5V10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Exportar CSV
+            </button>
+          )}
           <button
-            onClick={() => exportCSV(filtered)}
-            className="flex shrink-0 items-center gap-2 rounded-[12px] border border-[rgba(26,25,31,.14)] bg-white px-4 py-[9px] text-[13px] font-medium text-foreground transition-colors hover:bg-muted"
+            onClick={() => setShowAdd(true)}
+            className="flex items-center gap-1.5 rounded-[12px] bg-primary px-4 py-[9px] text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M7 1v8M4 6l3 3 3-3M2 10v1.5A1.5 1.5 0 003.5 13h7A1.5 1.5 0 0012 11.5V10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Exportar CSV
+            <span className="text-[15px] leading-none">+</span>
+            Agregar alumna
           </button>
-        )}
+        </div>
       </div>
 
       <div data-tour="clientes-search" className="mb-[18px]">
@@ -117,6 +128,12 @@ export default function ClientesPage() {
           setSelectedClient(null);
           fetchClients().then(setClients);
         }}
+      />
+
+      <AddClientModal
+        open={showAdd}
+        onClose={() => setShowAdd(false)}
+        onCreated={() => fetchClients().then(setClients)}
       />
     </div>
   );

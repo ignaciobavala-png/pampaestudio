@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { AppShell } from "@/components/layout/app-shell";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ export default function AgendaPage() {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ kind: "ok" | "warn"; text: string } | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!user) {
@@ -86,11 +88,39 @@ export default function AgendaPage() {
     fetchData();
   }, [fetchData]);
 
-  const handleCancel = async (bookingId: string) => {
-    setCancelling(bookingId);
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), 4000);
+    return () => clearTimeout(t);
+  }, [notice]);
+
+  const handleCancel = async (b: Booking) => {
+    // Ventana de 2h: si la clase confirmada empieza en menos de 2h, se pierde el crédito.
+    const startMs = new Date(`${b.date}T${b.class_templates?.time_start ?? "00:00:00"}`).getTime();
+    const withinWindow = b.status === "confirmed" && startMs - Date.now() <= 2 * 60 * 60 * 1000;
+
+    if (withinWindow) {
+      const ok = window.confirm(
+        "Faltan menos de 2 horas para la clase. Si cancelás ahora, perdés la clase: no se te devuelve el crédito.\n\n¿Querés cancelar igual?"
+      );
+      if (!ok) return;
+    }
+
+    setCancelling(b.id);
     const supabase = createClient();
-    await supabase.rpc("cancel_booking", { p_booking_id: bookingId });
+    const { data } = await supabase.rpc("cancel_booking", { p_booking_id: b.id });
     setCancelling(null);
+
+    const res = (data ?? {}) as { error?: string; credit_refunded?: boolean; was_confirmed?: boolean };
+    if (res.error) {
+      setNotice({ kind: "warn", text: res.error });
+    } else if (res.was_confirmed && res.credit_refunded) {
+      setNotice({ kind: "ok", text: "Reserva cancelada · crédito devuelto" });
+    } else if (res.was_confirmed) {
+      setNotice({ kind: "warn", text: "Reserva cancelada · perdiste la clase (menos de 2h)" });
+    } else {
+      setNotice({ kind: "ok", text: "Reserva cancelada" });
+    }
     fetchData();
   };
 
@@ -213,6 +243,19 @@ export default function AgendaPage() {
         </span>
       </div>
 
+      {notice && (
+        <div
+          className={cn(
+            "fixed inset-x-0 bottom-[88px] z-50 mx-auto w-[calc(100%-2rem)] max-w-[420px] rounded-[12px] px-4 py-3 text-[13px] font-medium shadow-lg",
+            notice.kind === "ok"
+              ? "bg-foreground text-white"
+              : "bg-amber-soft text-amber-text border border-amber-text/20"
+          )}
+        >
+          {notice.text}
+        </div>
+      )}
+
       <div className="flex flex-col gap-2 px-4 pb-4">
         {loading ? (
           <div className="flex flex-col gap-2">
@@ -239,6 +282,9 @@ export default function AgendaPage() {
             const dayNum = d.getDate();
             const monthName = MNAMES[d.getMonth()].slice(0, 3);
             const cls = b.class_templates;
+            const startMs = new Date(`${b.date}T${cls?.time_start ?? "00:00:00"}`).getTime();
+            const startsSoon =
+              b.status === "confirmed" && startMs - Date.now() <= 2 * 60 * 60 * 1000 && startMs > Date.now();
 
             return (
               <div
@@ -261,13 +307,20 @@ export default function AgendaPage() {
                     {cls?.time_start?.slice(0, 5) || ""} · {cls?.teacher || ""} · {cls?.room || ""}
                   </div>
                   {(b.status === "confirmed" || b.status === "waitlist") && (
-                    <button
-                      onClick={() => handleCancel(b.id)}
-                      disabled={cancelling === b.id}
-                      className="mt-[6px] text-[11px] text-muted-foreground underline underline-offset-2 cursor-pointer hover:text-foreground disabled:opacity-50"
-                    >
-                      {cancelling === b.id ? "Cancelando..." : "Cancelar reserva"}
-                    </button>
+                    <div className="mt-[6px] flex flex-col gap-0.5">
+                      <button
+                        onClick={() => handleCancel(b)}
+                        disabled={cancelling === b.id}
+                        className="self-start text-[11px] text-muted-foreground underline underline-offset-2 cursor-pointer hover:text-foreground disabled:opacity-50"
+                      >
+                        {cancelling === b.id ? "Cancelando..." : "Cancelar reserva"}
+                      </button>
+                      {startsSoon && (
+                        <span className="text-[10px] text-amber-text">
+                          Menos de 2h: si cancelás, perdés la clase.
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
                 <span
@@ -313,13 +366,15 @@ function AgendaHeader({
             className="h-[152px] w-auto brightness-0 -my-[66.5px] -ml-3"
           />
         </div>
-        {showLogin && (
+        {showLogin ? (
           <Link
             href="/login"
             className="rounded-[100px] bg-bordo-surface px-[14px] py-[7px] text-[13px] font-semibold text-primary transition-colors hover:bg-[#e0dbf9]"
           >
             Entrar
           </Link>
+        ) : (
+          <NotificationBell />
         )}
       </header>
 

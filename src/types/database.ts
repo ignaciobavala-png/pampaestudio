@@ -7,6 +7,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
@@ -116,11 +118,53 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          data: Json
+          id: string
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          read_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       packs: {
         Row: {
           created_at: string
           credits: number
           description: string
+          duration_days: number | null
           eyebrow: string
           features: Json
           id: string
@@ -135,6 +179,7 @@ export type Database = {
           created_at?: string
           credits: number
           description?: string
+          duration_days?: number | null
           eyebrow?: string
           features?: Json
           id?: string
@@ -149,6 +194,7 @@ export type Database = {
           created_at?: string
           credits?: number
           description?: string
+          duration_days?: number | null
           eyebrow?: string
           features?: Json
           id?: string
@@ -164,27 +210,33 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          experience_level: string | null
           full_name: string
           id: string
           is_approved: boolean
+          medical_notes: string
           phone: string | null
           role: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          experience_level?: string | null
           full_name?: string
           id: string
           is_approved?: boolean
+          medical_notes?: string
           phone?: string | null
           role?: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          experience_level?: string | null
           full_name?: string
           id?: string
           is_approved?: boolean
+          medical_notes?: string
           phone?: string | null
           role?: string
           updated_at?: string
@@ -197,6 +249,7 @@ export type Database = {
           created_at: string
           credits_remaining: number
           expires_at: string | null
+          frozen_at: string | null
           id: string
           pack_id: string
           starts_at: string
@@ -208,6 +261,7 @@ export type Database = {
           created_at?: string
           credits_remaining: number
           expires_at?: string | null
+          frozen_at?: string | null
           id?: string
           pack_id: string
           starts_at?: string
@@ -219,6 +273,7 @@ export type Database = {
           created_at?: string
           credits_remaining?: number
           expires_at?: string | null
+          frozen_at?: string | null
           id?: string
           pack_id?: string
           starts_at?: string
@@ -254,8 +309,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_book_spot: {
+        Args: { p_date: string; p_template_id: string; p_user_id: string }
+        Returns: Json
+      }
       admin_cancel_class: {
         Args: { p_date: string; p_template_id: string }
+        Returns: Json
+      }
+      admin_reschedule_booking: {
+        Args: {
+          p_booking_id: string
+          p_new_date: string
+          p_new_template_id: string
+        }
+        Returns: Json
+      }
+      book_recurring: {
+        Args: { p_start_date: string; p_template_id: string; p_weeks: number }
         Returns: Json
       }
       book_spot: {
@@ -271,10 +342,12 @@ export type Database = {
         Args: { p_date: string; p_template_id: string }
         Returns: number
       }
+      is_admin: { Args: never; Returns: boolean }
       is_class_full: {
         Args: { p_date: string; p_template_id: string }
         Returns: boolean
       }
+      run_pack_alerts: { Args: never; Returns: Json }
     }
     Enums: {
       [_ in never]: never
