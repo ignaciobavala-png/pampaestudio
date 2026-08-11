@@ -89,7 +89,8 @@
   --sidebar-accent-foreground: var(--secondary-foreground);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
-  --ink-dim: #AAA8B2;
+  /* Texto secundario. 5.37:1 sobre blanco / 5.06:1 sobre --background (WCAG AA). */
+  --ink-dim: #6B6976;
   --bordo-surface: #F3EBFF;
   --bordo-hover: #3A0312;
   --sage-soft: #EEF1EB;

@@ -1,15 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/lib/store/auth-store";
 import Link from "next/link";
 
 export default function PerfilPage() {
-  const router = useRouter();
-  const { user, profile, signOut, refreshProfile, loading } = useAuthStore();
+  const { user, profile, loading } = useAuthStore();
   const [userPack, setUserPack] = useState<{
     id: string;
     credits_remaining: number;
@@ -151,31 +149,62 @@ export default function PerfilPage() {
             Cuenta
           </div>
           {[
-            {
-              label: profile?.role === "admin" ? "Panel admin" : "Mis datos",
-              href: profile?.role === "admin" ? "/admin" : "#",
-            },
-            { label: "Historial de clases", href: "#" },
-            { label: "Métodos de pago", href: "#" },
-          ].map((item, i, arr) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={`flex items-center justify-between px-4 py-[13px] transition-colors hover:bg-muted ${
-                i < arr.length - 1 ? "border-b border-border" : ""
-              }`}
-            >
-              <span className="text-sm">{item.label}</span>
-              <span className="text-ink-dim text-sm">›</span>
-            </Link>
-          ))}
+            ...(profile?.role === "admin"
+              ? [{ label: "Panel admin", href: "/admin" }]
+              : [{ label: "Mis datos", href: null }]),
+            { label: "Historial de clases", href: null },
+            { label: "Métodos de pago", href: null },
+          ].map((item, i, arr) => {
+            const rowClass = `flex items-center justify-between px-4 py-[13px] ${
+              i < arr.length - 1 ? "border-b border-border" : ""
+            }`;
+
+            if (!item.href) {
+              return (
+                <div key={item.label} className={rowClass}>
+                  <span className="text-sm text-muted-foreground">
+                    {item.label}
+                  </span>
+                  <span className="rounded-full bg-muted px-2 py-[3px] text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-dim">
+                    Pronto
+                  </span>
+                </div>
+              );
+            }
+
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`${rowClass} transition-colors hover:bg-muted`}
+              >
+                <span className="text-sm">{item.label}</span>
+                <span aria-hidden="true" className="text-ink-dim text-sm">
+                  ›
+                </span>
+              </Link>
+            );
+          })}
         </div>
       </div>
 
       <a
         href="/api/auth/signout"
-        className="mx-4 mt-2 block w-[calc(100%-32px)] cursor-pointer rounded-[12px] border border-[rgba(26,25,31,.14)] bg-transparent py-3 text-center font-sans text-[13.5px] font-medium text-muted-foreground transition-all hover:text-foreground hover:border-ink-dim"
+        className="mx-4 mt-2 flex w-[calc(100%-32px)] cursor-pointer items-center justify-center gap-2 rounded-[12px] border border-[rgba(26,25,31,.14)] bg-transparent py-3 text-center font-sans text-[13.5px] font-medium text-muted-foreground transition-all hover:text-foreground hover:border-ink-dim"
       >
+        <svg
+          viewBox="0 0 24 24"
+          className="size-[17px]"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.6}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+          <path d="m10 17 5-5-5-5M15 12H3" />
+        </svg>
         Cerrar sesión
       </a>
     </AppShell>

@@ -15,8 +15,13 @@ const tabs = [
         fill="none"
         stroke="currentColor"
         strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
       >
-        <path d="M3 8l9-5 9 5-9 5-9-5zM3 8v8l9 5 9-5V8" />
+        <path d="M3.2 10.6 12 3.5l8.8 7.1" />
+        <path d="M5.6 9.4V20a1 1 0 0 0 1 1h10.8a1 1 0 0 0 1-1V9.4" />
+        <path d="M9.6 21v-5.4a2.4 2.4 0 0 1 4.8 0V21" />
       </svg>
     ),
   },
@@ -30,9 +35,12 @@ const tabs = [
         fill="none"
         stroke="currentColor"
         strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
       >
         <rect x="3" y="4" width="18" height="17" rx="3" />
-        <path d="M3 9h18M8 2v4M16 2v4" />
+        <path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
       </svg>
     ),
   },
@@ -46,9 +54,13 @@ const tabs = [
         fill="none"
         stroke="currentColor"
         strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
       >
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 7v5l3 2" />
+        <rect x="3" y="4" width="18" height="17" rx="3" />
+        <path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
+        <path d="m8.6 14.7 2.3 2.3 4.5-4.6" />
       </svg>
     ),
   },
@@ -62,9 +74,12 @@ const tabs = [
         fill="none"
         stroke="currentColor"
         strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
       >
-        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-        <path d="M10 17l5-5-5-5M15 12H3" />
+        <circle cx="12" cy="8" r="3.7" />
+        <path d="M4.8 20.6c0-4 3.2-6.4 7.2-6.4s7.2 2.4 7.2 6.4" />
       </svg>
     ),
   },
@@ -83,11 +98,20 @@ export function BottomNav() {
           <Link
             key={href}
             href={href}
+            aria-current={isActive ? "page" : undefined}
             className={cn(
-              "relative flex flex-1 flex-col items-center gap-1 py-[11px] text-[10px] font-medium transition-colors",
-              isActive ? "text-foreground" : "text-ink-dim"
+              "relative flex flex-1 flex-col items-center gap-1 py-[11px] text-[10px] transition-colors",
+              isActive
+                ? "font-semibold text-primary"
+                : "font-medium text-ink-dim"
             )}
           >
+            {isActive && (
+              <span
+                aria-hidden="true"
+                className="absolute inset-x-[26%] top-0 h-[2px] rounded-b-full bg-primary"
+              />
+            )}
             {icon}
             <span>{label}</span>
           </Link>
