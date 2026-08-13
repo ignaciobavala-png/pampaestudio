@@ -79,9 +79,17 @@ Guardar. En **Rate Limits**, subir el envío de mails por hora (default 30) si h
 
 Sin esto, los links de los mails redirigen al Site URL por defecto y el login queda colgado.
 
-✅ Ya cargado (11-ago-2026). Cuando se construya `/auth/confirm` hay que sumar también
-`https://www.pampaestudio.com/auth/confirm`, el apex, `http://localhost:3000/auth/confirm`
-y el wildcard de previews `https://pampa-estudio-*.vercel.app/auth/confirm`.
+✅ Cargado el 11-ago-2026 (las tres de `/api/auth/callback`).
+
+⚠️ **Pendiente**: `/auth/confirm` ya existe (13-ago-2026), así que hay que sumar a la
+lista blanca:
+
+- `https://www.pampaestudio.com/auth/confirm`
+- `https://pampaestudio.com/auth/confirm`
+- `http://localhost:3000/auth/confirm`
+- `https://pampa-estudio-*.vercel.app/auth/confirm` (previews)
+
+Sin esto, `{{ .RedirectTo }}` de los templates se ignora y el mail lleva al Site URL.
 
 ### 4. Cargar los templates
 
@@ -90,26 +98,30 @@ correspondiente y el asunto de la tabla de arriba → Save.
 
 ---
 
-## Estado (11-ago-2026)
-
-El estudio abre el mes que viene, así que esto queda pausado a mitad de camino.
+## Estado (13-ago-2026)
 
 **Hecho:**
 
 - Dominio `pampaestudio.com` en Vercel, DNS en `ns1/ns2.vercel-dns.com`.
 - Los dos templates HTML de esta carpeta, listos para pegar.
-- **Site URL** = `https://www.pampaestudio.com` y **Redirect URLs** cargadas
-  (`www`, apex y `localhost:3000`, todas con `/api/auth/callback`). Verificado.
+- **Site URL** = `https://www.pampaestudio.com` y **Redirect URLs** de
+  `/api/auth/callback` (`www`, apex, `localhost:3000`). Verificado 11-ago.
+- Cuenta de Resend creada y **los 4 registros DNS cargados en Vercel** (13-ago):
+  DKIM `resend._domainkey`, MX + SPF en `send`, DMARC en `_dmarc`. Región
+  `sa-east-1`. Propagados y verificados contra `8.8.8.8`.
+- **Flujo de reseteo en la app** (13-ago): `/recuperar`, `/auth/confirm` con
+  `verifyOtp`, `/nueva-clave`, link "Olvidé mi contraseña" en `/login`, `auth/`
+  excluido del matcher del middleware y `emailRedirectTo` apuntando a
+  `/auth/confirm`. El form de `/recuperar` responde igual exista o no la cuenta.
 
 **Pendiente para el lanzamiento:**
 
-1. Cuenta de Resend + DNS + SMTP en Supabase (pasos arriba). **Bloquea todo lo demás.**
-2. Pegar los dos templates HTML (solo se puede después del punto 1).
-3. Ruta `/auth/confirm` con `verifyOtp` + `emailRedirectTo` apuntando ahí + `/auth/`
-   excluido del middleware. Sin esto los links de los templates no resuelven.
-4. Construir el flujo de reseteo en la app: hoy no hay link "Olvidé mi contraseña" en
-   `/login` ni pantalla `/nueva-clave` para setear la clave nueva. Que el formulario
-   responda lo mismo exista o no la cuenta, para no ser un oráculo de enumeración.
+1. Verificar el dominio en Resend → crear API key (*Sending access*) → cargarla en
+   el SMTP de Supabase (tabla de la sección 2). **Bloquea todo lo demás.**
+2. Sumar las Redirect URLs de `/auth/confirm` (sección 3).
+3. Pegar los dos templates HTML con el link de `token_hash` (solo se puede después
+   del punto 1).
+4. Probar el reseteo end-to-end **abriendo el mail desde otro dispositivo**.
 5. Google OAuth **no está habilitado** en Supabase: el endpoint `/auth/v1/authorize`
    devuelve `Unsupported provider: provider is not enabled`. `signInWithGoogle()` en
    `src/lib/store/auth-store.ts:70` es código muerto — o se habilita el provider o se

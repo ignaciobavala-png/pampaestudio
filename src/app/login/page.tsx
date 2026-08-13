@@ -12,12 +12,19 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/";
   const isAdminLogin = next === "/admin";
+  const errorParam = searchParams.get("error");
   const { signIn, signUp, user, profile } = useAuthStore();
   const [mode, setMode] = useState<"login" | "register">(isAdminLogin ? "login" : "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    errorParam === "link_vencido"
+      ? "Ese link ya se usó o venció. Pedí uno nuevo."
+      : errorParam === "link_invalido"
+        ? "El link no es válido. Pedí uno nuevo."
+        : null
+  );
   const [loading, setLoading] = useState(false);
   const [registered, setRegistered] = useState(false);
 
@@ -175,6 +182,17 @@ function LoginForm() {
             >
               {loading ? "Cargando..." : mode === "login" ? "Entrar" : "Crear cuenta"}
             </Button>
+
+            {mode === "login" && (
+              <div className="text-center">
+                <Link
+                  href="/recuperar"
+                  className="inline-block text-[13px] text-muted-foreground underline-offset-2 hover:text-foreground transition-colors"
+                >
+                  Olvidé mi contraseña
+                </Link>
+              </div>
+            )}
 
           </form>
 

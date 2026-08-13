@@ -57,7 +57,8 @@ Registro → Admin aprueba (is_approved=true) → Admin asigna pack → Alumna r
 - [ ] `CRON_SECRET` en `.env.local` y en Vercel
 - [x] Dominio propio `pampaestudio.com` (Vercel DNS) + Site URL y Redirect URLs en Supabase
 - [ ] SMTP propio (Resend) → destraba la edición de templates de email en Supabase
-- [ ] Ruta `/auth/confirm` con `verifyOtp` + flujo de reseteo de contraseña en la app
+- [x] Ruta `/auth/confirm` con `verifyOtp` + flujo de reseteo (`/recuperar`, `/nueva-clave`)
+  → falta pegar los templates con `token_hash` en Supabase (bloqueado por SMTP)
   → ver `docs/email-templates/README.md`
 - [ ] Integración Mercado Pago (flujo de compra de packs por el alumno)
 - [ ] Botones placeholder en admin: Recordatorio, Duplicar clase, Asistencia, Exportar

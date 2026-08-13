@@ -84,7 +84,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       password,
       options: {
         data: { full_name: fullName },
-        emailRedirectTo: `${location.origin}/api/auth/callback`,
+        // /auth/confirm (token_hash), no /api/auth/callback (PKCE): el mail
+        // se puede abrir en otro dispositivo. /api/auth/callback queda solo
+        // para el OAuth de Google.
+        emailRedirectTo: `${location.origin}/auth/confirm`,
       },
     });
 

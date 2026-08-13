@@ -64,6 +64,8 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|assets|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // `auth/` queda afuera: /auth/confirm setea las cookies de sesión con
+    // verifyOtp y el middleware las pisaría.
+    "/((?!_next/static|_next/image|favicon.ico|assets|auth/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
