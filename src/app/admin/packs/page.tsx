@@ -262,15 +262,29 @@ export default function PacksPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [rowError, setRowError] = useState<string | null>(null);
 
+  const fetchAll = useCallback(
+    () => Promise.all([fetchAdminPacks(), fetchClassTypeOptions()]),
+    []
+  );
+
   const load = useCallback(async () => {
-    const [rows, types] = await Promise.all([fetchAdminPacks(), fetchClassTypeOptions()]);
+    const [rows, types] = await fetchAll();
     setPacks(rows);
     setClassTypes(types);
-  }, []);
+  }, [fetchAll]);
 
+  // La carga inicial descarta la respuesta si el componente ya se desmontó.
   useEffect(() => {
-    load();
-  }, [load]);
+    let cancelled = false;
+    fetchAll().then(([rows, types]) => {
+      if (cancelled) return;
+      setPacks(rows);
+      setClassTypes(types);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchAll]);
 
   const wrap = async (result: { ok: true; id?: string } | { ok: false; error: string }) => {
     if (!result.ok) return result.error;

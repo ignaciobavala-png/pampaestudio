@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/lib/store/auth-store";
 import type { Database } from "@/types/database";
@@ -34,20 +34,24 @@ export function NotificationBell() {
 
   const unread = items.filter((n) => !n.read_at).length;
 
-  const fetchItems = useCallback(async () => {
-    if (!user) return;
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("notifications")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(20);
-    setItems((data as Notif[]) || []);
-  }, [user]);
-
   useEffect(() => {
-    fetchItems();
-  }, [fetchItems]);
+    if (!user) return;
+    let cancelled = false;
+
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("notifications")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (!cancelled) setItems((data as Notif[]) || []);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   useEffect(() => {
     function onClick(e: MouseEvent) {

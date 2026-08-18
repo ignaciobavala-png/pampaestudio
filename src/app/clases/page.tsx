@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
@@ -54,29 +54,38 @@ export default function ClasesPage() {
   const [selDay, setSelDay] = useState(() => new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
   const [templates, setTemplates] = useState<ClassTemplate[]>([]);
   const [bookingsMap, setBookingsMap] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
 
   const week = getWeekDays(weekOffset);
   const day = week[selDay];
 
-  const fetchTemplates = useCallback(async () => {
-    setLoading(true);
-    const supabase = createClient();
-    const date = getWeekDays(weekOffset)[selDay].date;
+  // Clave del día que se está mirando: mientras la cargada no coincida, se
+  // muestra el esqueleto.
+  const dayKey = `${weekOffset}:${selDay}`;
 
-    const { data: tmpls } = await supabase
-      .from("class_templates")
-      .select(CLASS_TEMPLATE_SELECT)
-      .eq("is_active", true)
-      .or(dayOccurrenceFilter(selDay, date))
-      .order("time_start");
+  // Una sola pasada: se traen las clases y sus cupos, y recién ahí se aplica
+  // todo junto. Antes se seteaban las clases antes de tener los cupos, así que
+  // un día sin clases se quedaba con los cupos del día anterior; y tocar días
+  // rápido podía dejar que una respuesta vieja pisara a la nueva.
+  useEffect(() => {
+    let cancelled = false;
 
-    setTemplates(tmpls || []);
+    (async () => {
+      const supabase = createClient();
+      const date = getWeekDays(weekOffset)[selDay].date;
 
-    if (tmpls && tmpls.length > 0) {
+      const { data: tmpls } = await supabase
+        .from("class_templates")
+        .select(CLASS_TEMPLATE_SELECT)
+        .eq("is_active", true)
+        .or(dayOccurrenceFilter(selDay, date))
+        .order("time_start");
+
+      const list = (tmpls ?? []) as ClassTemplate[];
       const map: Record<string, number> = {};
+
       await Promise.all(
-        tmpls.map(async (t) => {
+        list.map(async (t) => {
           const { data } = await supabase.rpc("count_confirmed", {
             p_template_id: t.id,
             p_date: date,
@@ -84,15 +93,19 @@ export default function ClasesPage() {
           map[t.id] = (data as number) || 0;
         })
       );
+
+      if (cancelled) return;
+      setTemplates(list);
       setBookingsMap(map);
-    }
+      setLoadedKey(dayKey);
+    })();
 
-    setLoading(false);
-  }, [selDay, weekOffset]);
+    return () => {
+      cancelled = true;
+    };
+  }, [selDay, weekOffset, dayKey]);
 
-  useEffect(() => {
-    fetchTemplates();
-  }, [fetchTemplates]);
+  const loading = loadedKey !== dayKey;
 
   return (
     <AppShell>

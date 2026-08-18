@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { WeekCalendar } from "@/components/admin/week-calendar";
 import { fetchWeekData } from "./actions";
 import type { WeekEvent } from "./actions";
@@ -32,23 +32,26 @@ export default function SemanaPage() {
     return d;
   });
   const [data, setData] = useState<Record<number, WeekEvent[]>>({});
-  const [loading, setLoading] = useState(true);
+  const [loadedWeek, setLoadedWeek] = useState<number | null>(null);
 
   const days = getWeekDays(weekStart);
 
-  const fetchWeek = useCallback(async () => {
-    setLoading(true);
+  // Cambiar de semana rápido puede dejar llegando dos respuestas; el flag
+  // descarta la vieja para que no pise a la nueva.
+  useEffect(() => {
+    let cancelled = false;
     const weekDays = getWeekDays(weekStart);
-    const result = await fetchWeekData(
-      weekDays.map((d, i) => ({ di: i, date: d.date }))
-    );
-    setData(result);
-    setLoading(false);
+    fetchWeekData(weekDays.map((d, i) => ({ di: i, date: d.date }))).then((result) => {
+      if (cancelled) return;
+      setData(result);
+      setLoadedWeek(weekStart.getTime());
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [weekStart]);
 
-  useEffect(() => {
-    fetchWeek();
-  }, [fetchWeek]);
+  const loading = loadedWeek !== weekStart.getTime();
 
   const prevWeek = () => {
     const d = new Date(weekStart);

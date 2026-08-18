@@ -8,6 +8,13 @@ import { useAuthStore } from "@/lib/store/auth-store";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import type { Database } from "@/types/database";
+import { useNow } from "@/lib/hooks/use-now";
+import {
+  classStartMs,
+  isWithinCancelWindow,
+  readNow,
+  startsSoon,
+} from "@/lib/booking-window";
 
 type Booking = Database["public"]["Tables"]["bookings"]["Row"] & {
   class_templates:
@@ -44,56 +51,68 @@ export default function AgendaPage() {
     packPrice: number;
     packCredits: number;
   } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const now = useNow();
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ kind: "ok" | "warn"; text: string } | null>(null);
 
-  const fetchData = useCallback(async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+  // Mes que se está mirando. Mientras el cargado no coincida, mostramos el
+  // esqueleto en vez de los datos del mes anterior.
+  const monthKey = `${calYear}-${calMonth}`;
 
-    const supabase = createClient();
-
-    const { data: up } = await supabase
-      .from("user_packs")
-      .select("credits_remaining, packs(name, price, credits)")
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    if (up) {
-      const p = up.packs as unknown as { name: string; price: number; credits: number };
-      setUserPack({
-        credits_remaining: up.credits_remaining,
-        packName: p?.name || "",
-        packPrice: p?.price || 0,
-        packCredits: p?.credits || 0,
-      });
-    }
-
-    const start = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-01`;
-    const end = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-31`;
-
-    const { data: b } = await supabase
-      .from("bookings")
-      .select("*, class_templates(name, time_start, teachers(full_name), rooms(name))")
-      .eq("user_id", user.id)
-      .gte("date", start)
-      .lte("date", end)
-      .order("date", { ascending: true });
-
-    setBookings((b as Booking[]) || []);
-    setLoading(false);
-  }, [user, calYear, calMonth]);
+  /** Vuelve a pedir los datos del mes actual (después de cancelar una reserva). */
+  const fetchData = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   useEffect(() => {
-    setLoading(true);
-    fetchData();
-  }, [fetchData]);
+    if (!user) return;
+    let cancelled = false;
+
+    (async () => {
+      const supabase = createClient();
+
+      const { data: up } = await supabase
+        .from("user_packs")
+        .select("credits_remaining, packs(name, price, credits)")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      const start = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-01`;
+      const end = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-31`;
+
+      const { data: b } = await supabase
+        .from("bookings")
+        .select("*, class_templates(name, time_start, teachers(full_name), rooms(name))")
+        .eq("user_id", user.id)
+        .gte("date", start)
+        .lte("date", end)
+        .order("date", { ascending: true });
+
+      if (cancelled) return;
+
+      if (up) {
+        const p = up.packs as unknown as { name: string; price: number; credits: number };
+        setUserPack({
+          credits_remaining: up.credits_remaining,
+          packName: p?.name || "",
+          packPrice: p?.price || 0,
+          packCredits: p?.credits || 0,
+        });
+      }
+
+      setBookings((b as Booking[]) || []);
+      setLoadedKey(monthKey);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, calYear, calMonth, monthKey, refreshKey]);
+
+  const loading = Boolean(user) && loadedKey !== monthKey;
 
   useEffect(() => {
     if (!notice) return;
@@ -103,8 +122,8 @@ export default function AgendaPage() {
 
   const handleCancel = async (b: Booking) => {
     // Ventana de 2h: si la clase confirmada empieza en menos de 2h, se pierde el crédito.
-    const startMs = new Date(`${b.date}T${b.class_templates?.time_start ?? "00:00:00"}`).getTime();
-    const withinWindow = b.status === "confirmed" && startMs - Date.now() <= 2 * 60 * 60 * 1000;
+    const startMs = classStartMs(b.date, b.class_templates?.time_start);
+    const withinWindow = b.status === "confirmed" && isWithinCancelWindow(startMs, readNow());
 
     if (withinWindow) {
       const ok = window.confirm(
@@ -289,9 +308,8 @@ export default function AgendaPage() {
             const dayNum = d.getDate();
             const monthName = MNAMES[d.getMonth()].slice(0, 3);
             const cls = b.class_templates;
-            const startMs = new Date(`${b.date}T${cls?.time_start ?? "00:00:00"}`).getTime();
-            const startsSoon =
-              b.status === "confirmed" && startMs - Date.now() <= 2 * 60 * 60 * 1000 && startMs > Date.now();
+            const startMs = classStartMs(b.date, cls?.time_start);
+            const isSoon = b.status === "confirmed" && startsSoon(startMs, now);
 
             return (
               <div
@@ -322,7 +340,7 @@ export default function AgendaPage() {
                       >
                         {cancelling === b.id ? "Cancelando..." : "Cancelar reserva"}
                       </button>
-                      {startsSoon && (
+                      {isSoon && (
                         <span className="text-[10px] text-amber-text">
                           Menos de 2h: si cancelás, perdés la clase.
                         </span>

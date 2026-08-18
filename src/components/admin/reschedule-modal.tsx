@@ -16,8 +16,13 @@ interface RescheduleModalProps {
   onConfirm: (newTemplateId: string, newDate: string) => Promise<void>;
 }
 
-export function RescheduleModal({
-  open,
+/** El contenido se monta al abrir, así el estado arranca limpio sin resetearlo a mano. */
+export function RescheduleModal(props: RescheduleModalProps) {
+  if (!props.open) return null;
+  return <RescheduleModalContent {...props} />;
+}
+
+function RescheduleModalContent({
   studentName,
   currentTemplateId,
   defaultDate,
@@ -30,12 +35,14 @@ export function RescheduleModal({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      fetchTemplateOptions().then(setOptions);
-      setDate(defaultDate);
-      setTemplateId("");
-    }
-  }, [open, defaultDate]);
+    let cancelled = false;
+    fetchTemplateOptions().then((o) => {
+      if (!cancelled) setOptions(o);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleOverlayClick = useCallback(
     (e: React.MouseEvent) => {
@@ -50,8 +57,6 @@ export function RescheduleModal({
     await onConfirm(templateId, date);
     setLoading(false);
   };
-
-  if (!open) return null;
 
   return (
     <div

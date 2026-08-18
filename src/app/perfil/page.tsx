@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/lib/store/auth-store";
@@ -16,19 +16,23 @@ export default function PerfilPage() {
     packCredits: number;
   } | null>(null);
 
-  const fetchPack = useCallback(async () => {
+  useEffect(() => {
     if (!user) return;
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("user_packs")
-      .select("id, credits_remaining, packs(name, price, credits)")
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
+    let cancelled = false;
 
-    if (data) {
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("user_packs")
+        .select("id, credits_remaining, packs(name, price, credits)")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (cancelled || !data) return;
+
       const p = data.packs as unknown as {
         name: string;
         price: number;
@@ -41,12 +45,12 @@ export default function PerfilPage() {
         packPrice: p?.price || 0,
         packCredits: p?.credits || 0,
       });
-    }
-  }, [user]);
+    })();
 
-  useEffect(() => {
-    if (user) fetchPack();
-  }, [user, fetchPack]);
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   if (loading) {
     return (

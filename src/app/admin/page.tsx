@@ -62,7 +62,8 @@ function HoyContent() {
   const [classes, setClasses] = useState<AdminClass[]>([]);
   const [classMaxes, setClassMaxes] = useState<number[]>([]);
   const [cancelTarget, setCancelTarget] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadedDay, setLoadedDay] = useState<number | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [kpis, setKpis] = useState({ total: 0, ocupacion: 0, espera: 0 });
   const [revenue, setRevenue] = useState<number | null>(null);
 
@@ -72,19 +73,27 @@ function HoyContent() {
     fetchMonthlyRevenue().then(setRevenue).catch(() => setRevenue(null));
   }, []);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    const date = getDateForDay(dayIndex);
-    const result = await fetchAdminDay(dayIndex, date);
-    setClasses(result.classes);
-    setClassMaxes(result.maxes);
-    setKpis(result.kpis);
-    setLoading(false);
-  }, [dayIndex]);
+  /** Fuerza una recarga del día actual (después de reservar, cancelar, etc.). */
+  const fetchData = useCallback(() => setRefreshKey((k) => k + 1), []);
 
+  // Única puerta de entrada de los datos del día. El flag de cancelación evita
+  // que una respuesta lenta de un día pise a la del día que se eligió después.
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    let cancelled = false;
+    fetchAdminDay(dayIndex, getDateForDay(dayIndex)).then((result) => {
+      if (cancelled) return;
+      setClasses(result.classes);
+      setClassMaxes(result.maxes);
+      setKpis(result.kpis);
+      setLoadedDay(dayIndex);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [dayIndex, refreshKey]);
+
+  // Mientras el día pedido no sea el que está cargado, seguimos cargando.
+  const loading = loadedDay !== dayIndex;
 
   const selectClass = useCallback((index: number) => {
     setSelectedIndex(index);

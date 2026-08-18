@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -75,17 +75,21 @@ export default function NuevaClasePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadCatalogs = useCallback(async () => {
-    const data = await fetchNewClassCatalogs();
-    setCatalogs(data);
-    setTeacherId((prev) => prev || data.teachers[0]?.id || "");
-    setRoomId((prev) => prev || data.rooms[0]?.id || "");
-    setClassTypeId((prev) => prev || data.classTypes[0]?.id || "");
-  }, []);
-
   useEffect(() => {
-    loadCatalogs();
-  }, [loadCatalogs]);
+    let cancelled = false;
+    fetchNewClassCatalogs().then((data) => {
+      if (cancelled) return;
+      setCatalogs(data);
+      // Preseleccionar la primera opción de cada catálogo, sin pisar lo que la
+      // persona ya haya elegido si la respuesta llega tarde.
+      setTeacherId((prev) => prev || data.teachers[0]?.id || "");
+      setRoomId((prev) => prev || data.rooms[0]?.id || "");
+      setClassTypeId((prev) => prev || data.classTypes[0]?.id || "");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const timeEnd = minutesToTime(timeToMinutes(timeStart) + duration);
 

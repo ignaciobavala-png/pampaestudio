@@ -5,7 +5,7 @@ const AUTH_ROUTES = ["/agenda", "/perfil"];
 const ADMIN_ROUTES = ["/admin"];
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+  const supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

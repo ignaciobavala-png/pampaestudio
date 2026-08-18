@@ -174,13 +174,21 @@ function CatalogSection({
 export default function CatalogoPage() {
   const [catalogs, setCatalogs] = useState<Catalogs | null>(null);
 
+  // El fetch va aparte del setState para que el efecto pueda descartar una
+  // respuesta que llegó tarde (si el componente se desmontó mientras tanto).
   const load = useCallback(async () => {
     setCatalogs(await fetchCatalogs());
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    let cancelled = false;
+    fetchCatalogs().then((data) => {
+      if (!cancelled) setCatalogs(data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   /** Las actions devuelven el mensaje de error, o null si salió bien. */
   const wrap = async (result: { ok: true } | { ok: false; error: string }) => {
