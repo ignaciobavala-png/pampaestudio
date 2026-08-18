@@ -5,9 +5,11 @@ import {
   createPack,
   deletePack,
   fetchAdminPacks,
+  fetchClassTypeOptions,
   setPackActive,
   updatePack,
   type AdminPackRow,
+  type ClassTypeOption,
   type PackFormData,
 } from "./actions";
 
@@ -23,6 +25,7 @@ const EMPTY: PackFormData = {
   isFeatured: false,
   isActive: true,
   sortOrder: 0,
+  classTypeIds: [],
 };
 
 const labelCls = "text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-dim";
@@ -35,11 +38,13 @@ function formatArs(value: number): string {
 
 function PackForm({
   initial,
+  classTypes,
   submitLabel,
   onSubmit,
   onCancel,
 }: {
   initial: PackFormData;
+  classTypes: ClassTypeOption[];
   submitLabel: string;
   onSubmit: (data: PackFormData) => Promise<string | null>;
   onCancel: () => void;
@@ -161,6 +166,44 @@ function PackForm({
           />
         </div>
 
+        <div className="flex flex-col gap-1.5 col-span-2 max-[860px]:col-span-1">
+          <label className={labelCls}>Qué clases habilita</label>
+          <div className="flex flex-wrap gap-1.5">
+            {classTypes.length === 0 && (
+              <p className="text-[12.5px] text-ink-dim">
+                No hay tipos de clase cargados. Creálos en Catálogo.
+              </p>
+            )}
+            {classTypes.map((ct) => {
+              const checked = form.classTypeIds.includes(ct.id);
+              return (
+                <button
+                  key={ct.id}
+                  type="button"
+                  onClick={() =>
+                    set(
+                      "classTypeIds",
+                      checked
+                        ? form.classTypeIds.filter((id) => id !== ct.id)
+                        : [...form.classTypeIds, ct.id]
+                    )
+                  }
+                  className={`cursor-pointer rounded-[100px] border px-3.5 py-1.5 text-[12.5px] transition-all ${
+                    checked
+                      ? "border-primary/25 bg-bordo-surface font-medium text-primary"
+                      : "border-[rgba(26,25,31,.14)] bg-white text-ink-dim"
+                  }`}
+                >
+                  {ct.name}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-ink-dim">
+            Una clase cuyo tipo no esté en ningún pack se vuelve suelta y se paga aparte.
+          </p>
+        </div>
+
         <div className="flex flex-col justify-center gap-2">
           <label className="flex cursor-pointer items-center gap-2 text-[13px]">
             <input
@@ -214,12 +257,15 @@ function PackForm({
 
 export default function PacksPage() {
   const [packs, setPacks] = useState<AdminPackRow[] | null>(null);
+  const [classTypes, setClassTypes] = useState<ClassTypeOption[]>([]);
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [rowError, setRowError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setPacks(await fetchAdminPacks());
+    const [rows, types] = await Promise.all([fetchAdminPacks(), fetchClassTypeOptions()]);
+    setPacks(rows);
+    setClassTypes(types);
   }, []);
 
   useEffect(() => {
@@ -257,6 +303,7 @@ export default function PacksPage() {
         <div className="mb-5 max-w-[820px]">
           <PackForm
             initial={EMPTY}
+            classTypes={classTypes}
             submitLabel="Crear pack"
             onCancel={() => setCreating(false)}
             onSubmit={async (data) => {
@@ -272,6 +319,7 @@ export default function PacksPage() {
         <div className="mb-5 max-w-[820px]">
           <PackForm
             initial={editing}
+            classTypes={classTypes}
             submitLabel="Guardar cambios"
             onCancel={() => setEditingId(null)}
             onSubmit={async (data) => {
@@ -321,7 +369,13 @@ export default function PacksPage() {
                 </div>
                 <div className="mt-0.5 text-[12px] text-ink-dim">
                   {formatArs(p.priceArs)} · {p.credits} crédito{p.credits === 1 ? "" : "s"} ·{" "}
-                  {p.durationDays ? `${p.durationDays} días` : "sin vencimiento"}
+                  {p.durationDays ? `${p.durationDays} días` : "sin vencimiento"} ·{" "}
+                  {p.classTypeIds.length === 0
+                    ? "sin tipos"
+                    : classTypes
+                        .filter((ct) => p.classTypeIds.includes(ct.id))
+                        .map((ct) => ct.name)
+                        .join(", ")}
                   {p.activeUsers > 0 && ` · ${p.activeUsers} activo${p.activeUsers === 1 ? "" : "s"}`}
                 </div>
               </div>

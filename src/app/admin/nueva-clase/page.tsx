@@ -69,6 +69,8 @@ export default function NuevaClasePage() {
   const [timeStart, setTimeStart] = useState("09:00");
   const [duration, setDuration] = useState(DEFAULT_DURATION_MIN);
   const [maxCapacity, setMaxCapacity] = useState(10);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [priceArs, setPriceArs] = useState(0);
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -122,6 +124,9 @@ export default function NuevaClasePage() {
       description: description || null,
       recurrence: repeatsWeekly ? "weekly" : "once",
       specific_date: repeatsWeekly ? null : specificDate,
+      is_standalone: isStandalone,
+      // packs.price y class_templates.price van en centavos.
+      price: priceArs > 0 ? Math.round(priceArs * 100) : null,
     });
 
     if (result.error) {
@@ -285,6 +290,39 @@ export default function NuevaClasePage() {
               max={30}
               className={fieldCls}
             />
+          </div>
+
+          <div className="col-span-2 max-[860px]:col-span-1">
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-[11px] border border-[rgba(26,25,31,.14)] bg-[#F7F7F6] px-[13px] py-[11px]">
+              <input
+                type="checkbox"
+                checked={isStandalone}
+                onChange={(e) => setIsStandalone(e.target.checked)}
+                className="mt-0.5 size-4 shrink-0 accent-[var(--color-primary)]"
+              />
+              <span>
+                <span className="block text-sm text-foreground">Clase suelta</span>
+                <span className="mt-0.5 block text-[11px] text-ink-dim">
+                  No se paga con créditos de un pack: se cobra aparte. Marcala solo
+                  si su tipo sí está dentro de algún pack y esta clase es la excepción.
+                </span>
+              </span>
+            </label>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className={labelCls}>Precio suelto</label>
+            <input
+              type="number"
+              min={0}
+              step={500}
+              value={priceArs}
+              onChange={(e) => setPriceArs(Number(e.target.value))}
+              className={fieldCls}
+            />
+            <p className="text-[11px] text-ink-dim">
+              En pesos. Solo se cobra si la clase termina siendo suelta.
+            </p>
           </div>
 
           <div className="col-span-2 max-[860px]:col-span-1">

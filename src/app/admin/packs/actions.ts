@@ -13,6 +13,11 @@ import { assertAdmin, getServiceClient } from "@/lib/supabase/admin-guard";
  * `packs.price` está en centavos; la pantalla trabaja en pesos.
  */
 
+export interface ClassTypeOption {
+  id: string;
+  name: string;
+}
+
 export interface PackFormData {
   name: string;
   eyebrow: string;
@@ -27,6 +32,11 @@ export interface PackFormData {
   isFeatured: boolean;
   isActive: boolean;
   sortOrder: number;
+  /**
+   * Tipos de clase que habilita el pack. Una clase cuyo tipo no esté en ningún
+   * pack activo es una "clase suelta" y se paga aparte.
+   */
+  classTypeIds: string[];
 }
 
 export interface AdminPackRow extends PackFormData {
@@ -52,7 +62,21 @@ function validate(data: PackFormData): string | null {
     (!Number.isInteger(data.durationDays) || data.durationDays < 1)
   )
     return "La vigencia tiene que ser de al menos 1 día";
+  if (data.classTypeIds.length === 0)
+    return "Elegí al menos un tipo de clase, si no el pack no habilita nada";
   return null;
+}
+
+/** Tipos de clase activos, para armar la cobertura de cada pack. */
+export async function fetchClassTypeOptions(): Promise<ClassTypeOption[]> {
+  await assertAdmin();
+  const { data } = await getServiceClient()
+    .from("class_types")
+    .select("id, name")
+    .eq("is_active", true)
+    .order("sort_order")
+    .order("name");
+  return data ?? [];
 }
 
 export async function fetchAdminPacks(): Promise<AdminPackRow[]> {
@@ -68,10 +92,15 @@ export async function fetchAdminPacks(): Promise<AdminPackRow[]> {
   const packs = data ?? [];
   if (packs.length === 0) return [];
 
-  const { data: userPacks } = await client
-    .from("user_packs")
-    .select("pack_id")
-    .eq("status", "active");
+  const [{ data: userPacks }, { data: coverage }] = await Promise.all([
+    client.from("user_packs").select("pack_id").eq("status", "active"),
+    client.from("pack_class_types").select("pack_id, class_type_id"),
+  ]);
+
+  const types = new Map<string, string[]>();
+  for (const row of coverage ?? []) {
+    types.set(row.pack_id, [...(types.get(row.pack_id) ?? []), row.class_type_id]);
+  }
 
   const usage = new Map<string, number>();
   for (const up of userPacks ?? []) {
@@ -91,6 +120,7 @@ export async function fetchAdminPacks(): Promise<AdminPackRow[]> {
     isFeatured: p.is_featured,
     isActive: p.is_active,
     sortOrder: p.sort_order,
+    classTypeIds: types.get(p.id) ?? [],
     activeUsers: usage.get(p.id) ?? 0,
   }));
 }
@@ -111,6 +141,19 @@ function toRow(data: PackFormData) {
   };
 }
 
+/**
+ * Reemplaza la cobertura del pack. Se borra y se reinserta en vez de calcular
+ * el diff: son un puñado de filas y así no quedan estados intermedios raros.
+ */
+async function saveCoverage(packId: string, classTypeIds: string[]) {
+  const client = getServiceClient();
+  await client.from("pack_class_types").delete().eq("pack_id", packId);
+  if (classTypeIds.length === 0) return;
+  await client
+    .from("pack_class_types")
+    .insert(classTypeIds.map((id) => ({ pack_id: packId, class_type_id: id })));
+}
+
 function revalidatePacks() {
   revalidatePath("/admin/packs");
   revalidatePath("/admin/clientes");
@@ -129,6 +172,7 @@ export async function createPack(data: PackFormData): Promise<PackResult> {
     .single();
 
   if (error) return { ok: false, error: error.message };
+  if (inserted?.id) await saveCoverage(inserted.id, data.classTypeIds);
 
   revalidatePacks();
   return { ok: true, id: inserted?.id };
@@ -141,6 +185,7 @@ export async function updatePack(id: string, data: PackFormData): Promise<PackRe
 
   const { error } = await getServiceClient().from("packs").update(toRow(data)).eq("id", id);
   if (error) return { ok: false, error: error.message };
+  await saveCoverage(id, data.classTypeIds);
 
   revalidatePacks();
   return { ok: true };

@@ -34,6 +34,7 @@ function DetalleContent() {
 
   const [template, setTemplate] = useState<ClassTemplate | null>(null);
   const [taken, setTaken] = useState(0);
+  const [isStandalone, setIsStandalone] = useState(false);
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [bookingError, setBookingError] = useState<string | null>(null);
@@ -58,6 +59,12 @@ function DetalleContent() {
         p_date: date,
       });
       setTaken((count as number) || 0);
+
+      // Suelta = ningún pack activo cubre su tipo (o está marcada a mano).
+      const { data: standalone } = await supabase.rpc("class_is_standalone", {
+        p_template_id: templateId,
+      });
+      setIsStandalone(standalone === true);
       setLoading(false);
     })();
   }, [templateId, date]);
@@ -133,7 +140,15 @@ function DetalleContent() {
       return;
     }
 
-    const res = result as { status?: string; error?: string; position?: number; credits_remaining?: number };
+    const res = result as {
+      status?: string;
+      error?: string;
+      position?: number;
+      credits_remaining?: number;
+      standalone?: boolean;
+      payment_required?: boolean;
+      price?: number | null;
+    };
 
     if (res.error) {
       setBooking("error");
@@ -157,6 +172,7 @@ function DetalleContent() {
       credits: String(res.credits_remaining ?? ""),
       wl: res.status === "waitlist" ? "true" : "false",
       pos: String(res.position ?? ""),
+      pagar: res.payment_required ? String((res.price ?? 0) / 100) : "",
     });
     router.push(`/confirmacion?${sp.toString()}`);
   };
@@ -187,12 +203,28 @@ function DetalleContent() {
           {template.name}
         </h1>
 
+        {isStandalone && (
+          <p className="mb-3 rounded-[12px] bg-muted px-3.5 py-2.5 text-[12.5px] text-muted-foreground leading-relaxed">
+            Clase suelta: no se descuenta de tu pack, se abona aparte.
+          </p>
+        )}
+
         <div className="my-[14px] border-t border-border">
           {[
             ["Instructora", teacherName(template)],
             ["Día", `${dayName} ${dayN} ${MONTHS[new Date(date + "T12:00:00").getMonth()]}`],
             ["Horario", `${time} – ${end}`],
             ["Sala", roomName(template)],
+            ...(isStandalone
+              ? [
+                  [
+                    "Precio",
+                    template.price
+                      ? `$${(template.price / 100).toLocaleString("es-AR")}`
+                      : "A confirmar",
+                  ] as [string, string],
+                ]
+              : []),
           ].map(([k, v]) => (
             <div
               key={k}

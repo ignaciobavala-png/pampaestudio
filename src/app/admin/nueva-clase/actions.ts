@@ -45,6 +45,10 @@ export interface NewClassData {
   /** `weekly` se repite todas las semanas; `once` pasa solo en `specific_date`. */
   recurrence: "weekly" | "once";
   specific_date: string | null;
+  /** Fuerza que la clase sea suelta aunque su tipo esté dentro de un pack. */
+  is_standalone: boolean;
+  /** Precio individual en centavos. Solo se cobra si la clase termina siendo suelta. */
+  price: number | null;
 }
 
 export async function createClassTemplate(data: NewClassData) {

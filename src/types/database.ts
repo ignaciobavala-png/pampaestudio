@@ -20,9 +20,12 @@ export type Database = {
           created_at: string
           date: string
           id: string
+          payment_status: string
+          price: number | null
           status: string
           template_id: string
           user_id: string
+          user_pack_id: string | null
           waitlist_position: number | null
         }
         Insert: {
@@ -30,9 +33,12 @@ export type Database = {
           created_at?: string
           date: string
           id?: string
+          payment_status?: string
+          price?: number | null
           status?: string
           template_id: string
           user_id: string
+          user_pack_id?: string | null
           waitlist_position?: number | null
         }
         Update: {
@@ -40,9 +46,12 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          payment_status?: string
+          price?: number | null
           status?: string
           template_id?: string
           user_id?: string
+          user_pack_id?: string | null
           waitlist_position?: number | null
         }
         Relationships: [
@@ -72,8 +81,10 @@ export type Database = {
           discipline: string
           id: string
           is_active: boolean
+          is_standalone: boolean
           max_capacity: number
           name: string
+          price: number | null
           recurrence: string
           room_id: string
           specific_date: string | null
@@ -90,8 +101,10 @@ export type Database = {
           discipline?: string
           id?: string
           is_active?: boolean
+          is_standalone?: boolean
           max_capacity: number
           name: string
+          price?: number | null
           recurrence?: string
           room_id: string
           specific_date?: string | null
@@ -108,8 +121,10 @@ export type Database = {
           discipline?: string
           id?: string
           is_active?: boolean
+          is_standalone?: boolean
           max_capacity?: number
           name?: string
+          price?: number | null
           recurrence?: string
           room_id?: string
           specific_date?: string | null
@@ -209,6 +224,36 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pack_class_types: {
+        Row: {
+          class_type_id: string
+          pack_id: string
+        }
+        Insert: {
+          class_type_id: string
+          pack_id: string
+        }
+        Update: {
+          class_type_id?: string
+          pack_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pack_class_types_class_type_id_fkey"
+            columns: ["class_type_id"]
+            isOneToOne: false
+            referencedRelation: "class_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pack_class_types_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "packs"
             referencedColumns: ["id"]
           },
         ]
@@ -436,6 +481,7 @@ export type Database = {
         Returns: Json
       }
       cancel_booking: { Args: { p_booking_id: string }; Returns: Json }
+      class_is_standalone: { Args: { p_template_id: string }; Returns: boolean }
       count_confirmed: {
         Args: { p_date: string; p_template_id: string }
         Returns: number

@@ -257,7 +257,7 @@ Sin dependencias entre sí, se pueden hacer en cualquier orden.
   (`weekly` | `once`) + `specific_date`; el generador de agenda respeta ambas. Checkbox
   real en el formulario de creación.
 
-## Fase C — Packs ↔ tipos de clase y clases sueltas
+## Fase C — Packs ↔ tipos de clase y clases sueltas ✅ (18-ago-2026)
 
 Depende de B3 y B4.
 
@@ -269,6 +269,19 @@ Depende de B3 y B4.
   clase**, en vez del más reciente; y que las sueltas no consuman créditos sino que
   vayan por el camino de pago individual. Es la parte delicada: toca la función de
   reserva que ya está en producción con 264 bookings.
+
+**Bugs preexistentes que aparecieron al reescribir `book_spot`:**
+
+- `cancel_booking` devolvía el crédito al pack activo **más reciente**, no al que
+  se había cobrado. Con un solo pack por alumna pasaba desapercibido; con packs
+  por tipo de clase, una alumna con pack de Reformer y otro de Mat recuperaba el
+  crédito en el pack equivocado. Ahora la reserva guarda de qué pack salió
+  (`bookings.user_pack_id`) y el crédito vuelve ahí.
+- `bookings_unique_user_class_date` es UNIQUE sobre (user_id, template_id, date)
+  **sin filtrar por estado**, pero `book_spot` solo miraba reservas confirmadas o
+  en espera. Resultado: **una alumna que cancelaba una clase no podía volver a
+  reservarla nunca** — el insert reventaba con un 23505 crudo. Ahora la reserva
+  reutiliza la fila cancelada.
 
 > **Supuesto tomado (confirmar con Violeta):** como la pertenencia se deriva del *tipo*,
 > por defecto todas las clases de un tipo caen dentro del mismo pack. Para poder dejar
