@@ -13,7 +13,6 @@ type ClassTemplate = Database["public"]["Tables"]["class_templates"]["Row"];
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
 const CDESC: Record<string, string> = {
-  Yoga: "Práctica de respiración y movimiento fluido. Mat incluido.",
   Pilates: "Trabajo de core y postura. Apto para todos los niveles.",
 };
 

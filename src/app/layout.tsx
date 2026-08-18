@@ -22,9 +22,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Pampa Estudio — Pilates & Yoga",
+  title: "Pampa Estudio — Pilates",
   description:
-    "Reservá tus clases de Pilates y Yoga. Elegí tu pack, reservá tu lugar y disfrutá.",
+    "Reservá tus clases de Pilates. Elegí tu pack, reservá tu lugar y disfrutá.",
 };
 
 export default function RootLayout({

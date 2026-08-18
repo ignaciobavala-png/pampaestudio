@@ -3,6 +3,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { normalizePhone } from "@/lib/phone";
+import { endOfDayInArgentina, startOfMonthInArgentina } from "@/lib/time";
 import type { Database } from "@/types/database";
 import type { AdminClient, AdminPack, ClientHistoryItem } from "@/lib/admin-types";
 
@@ -186,7 +188,7 @@ export async function assignPack(userId: string, packId: string): Promise<void> 
   const now = new Date();
   const expiresAt =
     pack.duration_days != null
-      ? new Date(now.getTime() + pack.duration_days * 24 * 60 * 60 * 1000).toISOString()
+      ? endOfDayInArgentina(now, pack.duration_days).toISOString()
       : null;
 
   // Assign new pack
@@ -283,8 +285,7 @@ export async function fetchClientHistory(userId: string): Promise<ClientHistoryI
 export async function fetchMonthlyRevenue(): Promise<number> {
   await assertAdmin();
   const supabase = await getSupabase();
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const start = startOfMonthInArgentina().toISOString();
 
   const { data } = await supabase
     .from("user_packs")
@@ -319,7 +320,7 @@ export async function createManagedUser(
     full_name: name,
     role: "client",
     is_approved: true,
-    phone: phone.trim() || null,
+    phone: normalizePhone(phone),
   });
 
   if (error) return { ok: false, error: error.message };
@@ -362,7 +363,7 @@ export async function createAuthUser(
   // El trigger ya creó el profile con full_name; completamos teléfono y aprobación.
   await adminClient
     .from("profiles")
-    .update({ is_approved: true, phone: phone.trim() || null })
+    .update({ is_approved: true, phone: normalizePhone(phone) })
     .eq("id", newId);
 
   return {

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { FunnelSteps } from "@/components/nav/funnel-steps";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { PhoneInput } from "@/components/ui/phone-input";
+import { isValidE164 } from "@/lib/phone";
 
 type Method = "mp" | "card" | "transfer";
 
@@ -24,7 +26,7 @@ export default function PagoPage() {
     { id: "transfer" as const, icon: "🏦", label: "Transferencia bancaria", sub: "Acreditación en 24hs" },
   ];
 
-  const contactValid = name.trim().length >= 2 && email.includes("@") && phone.trim().length >= 8;
+  const contactValid = name.trim().length >= 2 && email.includes("@") && isValidE164(phone);
 
   return (
     <AppShell>
@@ -103,10 +105,12 @@ export default function PagoPage() {
               </div>
               <div>
                 <label className="mb-1 block text-[11px] font-semibold tracking-[0.06em] uppercase text-ink-dim">WhatsApp</label>
-                <div className="flex items-center gap-[9px] rounded-[11px] border border-[rgba(26,25,31,.14)] bg-muted px-[13px] py-2 transition-colors focus-within:border-primary focus-within:bg-card">
-                  <span className="text-[13px] text-ink-dim">+54 9</span>
-                  <input value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, ""))} className="flex-1 bg-transparent py-1 text-sm text-foreground outline-none placeholder:text-ink-dim" placeholder="11 1234 5678" />
-                </div>
+                <PhoneInput
+                  value={phone}
+                  onChange={setPhone}
+                  className="gap-[9px] rounded-[11px] border border-[rgba(26,25,31,.14)] bg-muted px-[13px] py-2 transition-colors focus-within:border-primary focus-within:bg-card"
+                  inputClassName="text-sm text-foreground placeholder:text-ink-dim"
+                />
                 <p className="mt-1 text-[11px] text-ink-dim">Te mandamos el recordatorio de cada clase por acá.</p>
               </div>
             </div>

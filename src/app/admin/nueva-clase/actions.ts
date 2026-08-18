@@ -7,7 +7,7 @@ import type { Database } from "@/types/database";
 
 export async function createClassTemplate(data: {
   name: string;
-  discipline: "Yoga" | "Pilates";
+  discipline: "Pilates";
   teacher: string;
   room: string;
   day_of_week: number;

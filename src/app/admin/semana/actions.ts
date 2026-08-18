@@ -8,7 +8,6 @@ export interface WeekEvent {
   time: string;
   end: string;
   name: string;
-  type: "Yoga" | "Pilates";
   teacher: string;
   taken: number;
   max: number;
@@ -62,7 +61,6 @@ export async function fetchWeekData(
         time: t.time_start.slice(0, 5),
         end: t.time_end.slice(0, 5),
         name: t.name,
-        type: t.discipline as "Yoga" | "Pilates",
         teacher: t.teacher.split(" ").slice(0, 2).join(" ").replace(/\.$/, "") + ".",
         taken: (count as number) || 0,
         max: t.max_capacity,

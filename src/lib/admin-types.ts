@@ -1,7 +1,13 @@
+/**
+ * El estudio es solo Pilates. Yoga salió de la app el 18-ago-2026; las clases
+ * viejas quedaron archivadas (is_active = false) y nunca se traen.
+ */
+export type Discipline = "Pilates";
+
 export interface AdminClass {
   templateId: string;
   name: string;
-  type: "Yoga" | "Pilates";
+  type: Discipline;
   room: string;
   teacher: string;
   time: string;

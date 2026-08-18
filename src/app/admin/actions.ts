@@ -5,10 +5,9 @@ import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import type { Database } from "@/types/database";
-import type { AdminClass, ClientOption, TemplateOption } from "@/lib/admin-types";
+import type { AdminClass, ClientOption, Discipline, TemplateOption } from "@/lib/admin-types";
 
 const DISCIPLINE_COLORS: Record<string, string> = {
-  Yoga: "var(--color-primary)",
   Pilates: "#9A7B2E",
 };
 
@@ -132,7 +131,7 @@ export async function fetchAdminDay(
     classesData.push({
       templateId: t.id,
       name: t.name,
-      type: t.discipline as "Yoga" | "Pilates",
+      type: t.discipline as Discipline,
       room: t.room,
       teacher: t.teacher,
       time: t.time_start.slice(0, 5),

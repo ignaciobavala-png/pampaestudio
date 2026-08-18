@@ -7,6 +7,31 @@ import { createClassTemplate } from "./actions";
 const INSTRUCTORS = ["Valeria Martínez", "Sofía Rodríguez", "Camila López"];
 const ROOMS = ["Sala 1", "Sala 2", "Reformer"];
 
+/** Las clases del estudio duran 50 minutos; la grilla arranca a las 7 y corta cada 50'. */
+const DEFAULT_DURATION_MIN = 50;
+const GRID_START_MIN = 7 * 60;
+const GRID_END_MIN = 21 * 60;
+
+function minutesToTime(total: number): string {
+  const h = Math.floor(total / 60) % 24;
+  const m = total % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function timeToMinutes(value: string): number {
+  const [h, m] = value.split(":").map(Number);
+  return h * 60 + m;
+}
+
+/** Horarios de inicio posibles: cada 50 minutos desde las 07:00. */
+const START_SLOTS: string[] = (() => {
+  const slots: string[] = [];
+  for (let t = GRID_START_MIN; t + DEFAULT_DURATION_MIN <= GRID_END_MIN; t += DEFAULT_DURATION_MIN) {
+    slots.push(minutesToTime(t));
+  }
+  return slots;
+})();
+
 const DAY_OPTIONS = [
   { label: "Lunes", value: 0 },
   { label: "Martes", value: 1 },
@@ -19,21 +44,26 @@ const DAY_OPTIONS = [
 
 export default function NuevaClasePage() {
   const router = useRouter();
-  const [discipline, setDiscipline] = useState<"Yoga" | "Pilates">("Yoga");
   const [name, setName] = useState("");
   const [teacher, setTeacher] = useState(INSTRUCTORS[0]);
   const [room, setRoom] = useState(ROOMS[0]);
   const [dayOfWeek, setDayOfWeek] = useState(0);
   const [timeStart, setTimeStart] = useState("09:00");
-  const [timeEnd, setTimeEnd] = useState("10:15");
+  const [duration, setDuration] = useState(DEFAULT_DURATION_MIN);
   const [maxCapacity, setMaxCapacity] = useState(10);
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const timeEnd = minutesToTime(timeToMinutes(timeStart) + duration);
+
   const handleSubmit = async () => {
     if (!name.trim()) {
       setError("El nombre de la clase es obligatorio.");
+      return;
+    }
+    if (!Number.isFinite(duration) || duration <= 0) {
+      setError("La duración tiene que ser mayor a cero.");
       return;
     }
 
@@ -42,7 +72,7 @@ export default function NuevaClasePage() {
 
     const result = await createClassTemplate({
       name: name.trim(),
-      discipline,
+      discipline: "Pilates",
       teacher,
       room,
       day_of_week: dayOfWeek,
@@ -85,28 +115,6 @@ export default function NuevaClasePage() {
               className="w-full rounded-[11px] border border-[rgba(26,25,31,.14)] bg-[#F7F7F6] px-[13px] py-[11px] font-sans text-sm text-foreground outline-none transition-colors placeholder:text-ink-dim focus:border-primary focus:bg-white"
               placeholder="Ej: Vinyasa Flow Avanzado"
             />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-dim">
-              Disciplina
-            </label>
-            <div className="flex gap-1.5">
-              {(["Yoga", "Pilates"] as const).map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => setDiscipline(d)}
-                  className={`flex-1 cursor-pointer rounded-[10px] border py-2.5 text-[13px] text-center font-sans transition-all ${
-                    discipline === d
-                      ? "bg-bordo-surface border-primary/25 font-medium text-primary"
-                      : "bg-white border-[rgba(26,25,31,.14)] text-ink-dim"
-                  }`}
-                >
-                  {d}
-                </button>
-              ))}
-            </div>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -160,24 +168,33 @@ export default function NuevaClasePage() {
             <label className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-dim">
               Hora de inicio
             </label>
-            <input
-              type="time"
+            <select
               value={timeStart}
               onChange={(e) => setTimeStart(e.target.value)}
               className="w-full rounded-[11px] border border-[rgba(26,25,31,.14)] bg-[#F7F7F6] px-[13px] py-[11px] font-sans text-sm text-foreground outline-none transition-colors focus:border-primary focus:bg-white"
-            />
+            >
+              {START_SLOTS.map((slot) => (
+                <option key={slot} value={slot}>
+                  {slot}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-dim">
-              Hora de fin
+              Duración
             </label>
             <input
-              type="time"
-              value={timeEnd}
-              onChange={(e) => setTimeEnd(e.target.value)}
+              type="number"
+              value={duration}
+              onChange={(e) => setDuration(Number(e.target.value))}
+              min={10}
+              max={180}
+              step={5}
               className="w-full rounded-[11px] border border-[rgba(26,25,31,.14)] bg-[#F7F7F6] px-[13px] py-[11px] font-sans text-sm text-foreground outline-none transition-colors focus:border-primary focus:bg-white"
             />
+            <p className="text-[11px] text-ink-dim">Minutos · termina {timeEnd}</p>
           </div>
 
           <div className="flex flex-col gap-1.5">

@@ -4,7 +4,6 @@ interface WeekEvent {
   time: string;
   end: string;
   name: string;
-  type: "Yoga" | "Pilates";
   teacher: string;
   taken: number;
   max: number;
@@ -78,11 +77,7 @@ export function WeekCalendar({ days, data }: WeekCalendarProps) {
                         key={ei}
                         className={`mb-[2px] cursor-pointer rounded-[8px] px-2 py-[5px] text-[11px] transition-[filter] hover:brightness-[.96] ${
                           full ? "outline-[1.5px] outline-destructive -outline-offset-1" : ""
-                        } ${
-                          e.type === "Pilates"
-                            ? "bg-amber-soft text-amber-text"
-                            : "bg-bordo-surface text-primary"
-                        }`}
+                        } bg-amber-soft text-amber-text`}
                       >
                         <div className="font-semibold truncate">{e.name}</div>
                         <div className="text-[9.5px] opacity-75 truncate">

@@ -12,6 +12,7 @@ import {
 } from "@/app/admin/clientes/actions";
 import type { AdminClient, AdminPack, ClientHistoryItem } from "@/lib/admin-types";
 import { cn } from "@/lib/utils";
+import { formatPhone } from "@/lib/phone";
 
 const HISTORY_STATUS: Record<string, { label: string; cls: string }> = {
   confirmed: { label: "Confirmada", cls: "text-primary bg-bordo-surface" },
@@ -142,7 +143,7 @@ export function ClientDetailModal({ open, client, onClose, onUpdate }: ClientDet
             </div>
             <div>
               <div className="font-serif text-[22px]">{client.name}</div>
-              <div className="text-xs text-ink-dim mt-0.5">{client.email || client.phone}</div>
+              <div className="text-xs text-ink-dim mt-0.5">{client.email || formatPhone(client.phone)}</div>
             </div>
           </div>
 

@@ -42,7 +42,6 @@ function getWeekDays(offset: number) {
 export default function ClasesPage() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const [filter, setFilter] = useState<string>("todos");
   const [weekOffset, setWeekOffset] = useState(0);
   const [selDay, setSelDay] = useState(() => new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
   const [templates, setTemplates] = useState<ClassTemplate[]>([]);
@@ -51,7 +50,6 @@ export default function ClasesPage() {
 
   const week = getWeekDays(weekOffset);
   const day = week[selDay];
-  const filters = ["todos", "Yoga", "Pilates"];
 
   const fetchTemplates = useCallback(async () => {
     setLoading(true);
@@ -87,10 +85,6 @@ export default function ClasesPage() {
   useEffect(() => {
     fetchTemplates();
   }, [fetchTemplates]);
-
-  const filtered = templates.filter(
-    (t) => filter === "todos" || t.discipline === filter
-  );
 
   return (
     <AppShell>
@@ -134,23 +128,6 @@ export default function ClasesPage() {
             ›
           </button>
         </div>
-      </div>
-
-      <div className="flex gap-[7px] overflow-x-auto px-[22px] pb-1 pt-[14px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {filters.map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={cn(
-              "shrink-0 cursor-pointer whitespace-nowrap rounded-[100px] border border-[rgba(26,25,31,.14)] px-[15px] py-2 text-[12.5px] font-medium transition-all",
-              filter === f
-                ? "border-foreground bg-foreground text-white"
-                : "bg-transparent text-muted-foreground hover:border-ink-dim"
-            )}
-          >
-            {f === "todos" ? "Todos" : f}
-          </button>
-        ))}
       </div>
 
       <div className="flex gap-2 overflow-x-auto px-[22px] py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -207,17 +184,15 @@ export default function ClasesPage() {
               />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : templates.length === 0 ? (
           <div className="py-[60px] px-[30px] text-center">
             <div className="font-serif italic text-[30px] text-[#DBDAD6]">○</div>
             <p className="mt-2 text-[13px] text-muted-foreground leading-relaxed">
-              {templates.length === 0
-                ? "Día de descanso."
-                : `Sin clases de ${filter} este día.`}
+              Día de descanso.
             </p>
           </div>
         ) : (
-          filtered.map((c, idx) => {
+          templates.map((c, idx) => {
             const taken = bookingsMap[c.id] || 0;
             const free = c.max_capacity - taken;
             const full = free <= 0;
