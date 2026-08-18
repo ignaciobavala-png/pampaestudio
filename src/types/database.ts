@@ -64,6 +64,7 @@ export type Database = {
       }
       class_templates: {
         Row: {
+          class_type_id: string
           created_at: string
           created_by: string | null
           day_of_week: number
@@ -73,27 +74,33 @@ export type Database = {
           is_active: boolean
           max_capacity: number
           name: string
-          room: string
-          teacher: string
+          recurrence: string
+          room_id: string
+          specific_date: string | null
+          teacher_id: string
           time_end: string
           time_start: string
         }
         Insert: {
+          class_type_id: string
           created_at?: string
           created_by?: string | null
           day_of_week: number
           description?: string | null
-          discipline: string
+          discipline?: string
           id?: string
           is_active?: boolean
           max_capacity: number
           name: string
-          room: string
-          teacher: string
+          recurrence?: string
+          room_id: string
+          specific_date?: string | null
+          teacher_id: string
           time_end: string
           time_start: string
         }
         Update: {
+          class_type_id?: string
           created_at?: string
           created_by?: string | null
           day_of_week?: number
@@ -103,12 +110,21 @@ export type Database = {
           is_active?: boolean
           max_capacity?: number
           name?: string
-          room?: string
-          teacher?: string
+          recurrence?: string
+          room_id?: string
+          specific_date?: string | null
+          teacher_id?: string
           time_end?: string
           time_start?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "class_templates_class_type_id_fkey"
+            columns: ["class_type_id"]
+            isOneToOne: false
+            referencedRelation: "class_types"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "class_templates_created_by_fkey"
             columns: ["created_by"]
@@ -116,7 +132,45 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "class_templates_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_templates_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      class_types: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
       }
       notifications: {
         Row: {
@@ -240,6 +294,54 @@ export type Database = {
           phone?: string | null
           role?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      rooms: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      teachers: {
+        Row: {
+          created_at: string
+          full_name: string
+          id: string
+          is_active: boolean
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          full_name: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
         }
         Relationships: []
       }

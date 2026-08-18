@@ -7,8 +7,16 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/lib/store/auth-store";
 import type { Database } from "@/types/database";
+import {
+  CLASS_TEMPLATE_SELECT,
+  classTypeName,
+  roomName,
+  teacherName,
+  type ClassTemplateJoins,
+} from "@/lib/classes";
 
-type ClassTemplate = Database["public"]["Tables"]["class_templates"]["Row"];
+type ClassTemplate = Database["public"]["Tables"]["class_templates"]["Row"] &
+  ClassTemplateJoins;
 
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
@@ -40,7 +48,7 @@ function DetalleContent() {
     (async () => {
       const { data: t } = await supabase
         .from("class_templates")
-        .select("*")
+        .select(CLASS_TEMPLATE_SELECT)
         .eq("id", templateId)
         .single();
       setTemplate(t);
@@ -143,8 +151,8 @@ function DetalleContent() {
     const sp = new URLSearchParams({
       name: template?.name ?? "",
       time: `${time} – ${end}`,
-      teacher: template?.teacher ?? "",
-      room: template?.room ?? "",
+      teacher: template ? teacherName(template) : "",
+      room: template ? roomName(template) : "",
       day: dayLabel,
       credits: String(res.credits_remaining ?? ""),
       wl: res.status === "waitlist" ? "true" : "false",
@@ -173,7 +181,7 @@ function DetalleContent() {
 
       <div className="px-6 pt-2 pb-6">
         <div className="mb-2 text-[11px] font-semibold tracking-[0.1em] uppercase text-ink-dim">
-          {template.discipline} · {template.room}
+          {classTypeName(template)} · {roomName(template)}
         </div>
         <h1 className="font-serif text-[28px] leading-[1.08] tracking-[-0.02em] mb-3">
           {template.name}
@@ -181,10 +189,10 @@ function DetalleContent() {
 
         <div className="my-[14px] border-t border-border">
           {[
-            ["Instructora", template.teacher],
+            ["Instructora", teacherName(template)],
             ["Día", `${dayName} ${dayN} ${MONTHS[new Date(date + "T12:00:00").getMonth()]}`],
             ["Horario", `${time} – ${end}`],
-            ["Sala", template.room],
+            ["Sala", roomName(template)],
           ].map(([k, v]) => (
             <div
               key={k}

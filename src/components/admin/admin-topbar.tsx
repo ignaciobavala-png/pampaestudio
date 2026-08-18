@@ -10,6 +10,8 @@ const tabs = [
   { id: "hoy", label: "Hoy", href: "/admin" },
   { id: "semana", label: "Semana", href: "/admin/semana" },
   { id: "clientes", label: "Clientes", href: "/admin/clientes" },
+  { id: "packs", label: "Packs", href: "/admin/packs" },
+  { id: "catalogo", label: "Catálogo", href: "/admin/catalogo" },
   { id: "nueva", label: "Nueva clase", href: "/admin/nueva-clase" },
 ];
 

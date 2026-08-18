@@ -42,6 +42,17 @@ const tabs = [
     ),
   },
   {
+    id: "packs",
+    href: "/admin/packs",
+    label: "Packs",
+    icon: (
+      <svg viewBox="0 0 24 24" className="size-[21px]" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M3 8.5 12 4l9 4.5v7L12 20l-9-4.5z" />
+        <path d="M3 8.5 12 13l9-4.5M12 13v7" />
+      </svg>
+    ),
+  },
+  {
     id: "nueva",
     href: "/admin/nueva-clase",
     label: "Nueva",

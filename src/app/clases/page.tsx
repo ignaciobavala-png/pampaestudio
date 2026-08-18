@@ -9,8 +9,16 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { cn, toLocalDateStr } from "@/lib/utils";
 import type { Database } from "@/types/database";
+import {
+  CLASS_TEMPLATE_SELECT,
+  dayOccurrenceFilter,
+  roomName,
+  teacherName,
+  type ClassTemplateJoins,
+} from "@/lib/classes";
 
-type ClassTemplate = Database["public"]["Tables"]["class_templates"]["Row"];
+type ClassTemplate = Database["public"]["Tables"]["class_templates"]["Row"] &
+  ClassTemplateJoins;
 
 const DAY_NAMES = [
   "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo",
@@ -58,9 +66,9 @@ export default function ClasesPage() {
 
     const { data: tmpls } = await supabase
       .from("class_templates")
-      .select("*")
-      .eq("day_of_week", selDay)
+      .select(CLASS_TEMPLATE_SELECT)
       .eq("is_active", true)
+      .or(dayOccurrenceFilter(selDay, date))
       .order("time_start");
 
     setTemplates(tmpls || []);
@@ -213,8 +221,8 @@ export default function ClasesPage() {
                     time: c.time_start.slice(0, 5),
                     end: c.time_end.slice(0, 5),
                     type: c.discipline,
-                    teacher: c.teacher,
-                    room: c.room,
+                    teacher: teacherName(c),
+                    room: roomName(c),
                     taken: String(taken),
                     max: String(c.max_capacity),
                     day: String(selDay),
@@ -247,7 +255,7 @@ export default function ClasesPage() {
                     {c.name}
                   </h3>
                   <p className="mt-[2px] text-[12.5px] text-muted-foreground">
-                    {c.teacher} · {c.room}
+                    {teacherName(c)} · {roomName(c)}
                   </p>
                   <div className="mt-[7px] flex items-center gap-2">
                     <div className="h-[3px] max-w-[84px] flex-1 overflow-hidden rounded-[2px] bg-[#DBDAD6]">

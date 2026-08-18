@@ -1,12 +1,14 @@
 "use server";
 
-import { createServerClient } from "@supabase/ssr";
-import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
 import { normalizePhone } from "@/lib/phone";
 import { endOfDayInArgentina, startOfMonthInArgentina } from "@/lib/time";
-import type { Database } from "@/types/database";
 import type { AdminClient, AdminPack, ClientHistoryItem } from "@/lib/admin-types";
+import {
+  assertAdmin,
+  getServerSupabase as getSupabase,
+  getServiceClient as getAdminClient,
+} from "@/lib/supabase/admin-guard";
+import type { Database } from "@/types/database";
 
 function generateAvColor(name: string): string {
   const colors = [
@@ -26,32 +28,6 @@ function getInitials(name: string): string {
 }
 
 const MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-
-async function getSupabase() {
-  const cookieStore = await cookies();
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll(); },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
-}
-
-function getAdminClient() {
-  return createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
-}
 
 export async function fetchClients(): Promise<AdminClient[]> {
   const supabase = await getSupabase();
@@ -144,19 +120,6 @@ export async function fetchPacks(): Promise<AdminPack[]> {
  * Defensa en profundidad: verifica que la sesión sea admin antes de operar con
  * service_role. Devuelve el id del admin. Lanza si no está autorizado.
  */
-async function assertAdmin(): Promise<string> {
-  const supabase = await getSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("No autenticado");
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-  if (profile?.role !== "admin") throw new Error("Acceso denegado");
-  return user.id;
-}
-
 export async function setApproval(userId: string, approved: boolean): Promise<void> {
   await assertAdmin();
   const adminClient = getAdminClient();

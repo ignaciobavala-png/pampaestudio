@@ -1,8 +1,12 @@
 "use server";
 
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
-import type { Database } from "@/types/database";
+import { getServerSupabase as getSupabase } from "@/lib/supabase/admin-guard";
+import {
+  CLASS_TEMPLATE_SELECT,
+  dayOccurrenceFilter,
+  shortTeacherName,
+  teacherName,
+} from "@/lib/classes";
 
 export interface WeekEvent {
   time: string;
@@ -11,24 +15,6 @@ export interface WeekEvent {
   teacher: string;
   taken: number;
   max: number;
-}
-
-async function getSupabase() {
-  const cookieStore = await cookies();
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll(); },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
 }
 
 export async function fetchWeekData(
@@ -40,9 +26,9 @@ export async function fetchWeekData(
   for (const { di, date } of weekDates) {
     const { data: templates } = await supabase
       .from("class_templates")
-      .select("*")
-      .eq("day_of_week", di)
+      .select(CLASS_TEMPLATE_SELECT)
       .eq("is_active", true)
+      .or(dayOccurrenceFilter(di, date))
       .order("time_start");
 
     if (!templates) {
@@ -61,7 +47,7 @@ export async function fetchWeekData(
         time: t.time_start.slice(0, 5),
         end: t.time_end.slice(0, 5),
         name: t.name,
-        teacher: t.teacher.split(" ").slice(0, 2).join(" ").replace(/\.$/, "") + ".",
+        teacher: shortTeacherName(teacherName(t)),
         taken: (count as number) || 0,
         max: t.max_capacity,
       });

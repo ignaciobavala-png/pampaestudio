@@ -223,7 +223,7 @@ abiertas.
 
 Ordenado por dependencias reales, no por lo que suena más urgente.
 
-## Fase A — Desbloqueos y fixes cortos
+## Fase A — Desbloqueos y fixes cortos ✅ (18-ago-2026)
 
 Sin dependencias entre sí, se pueden hacer en cualquier orden.
 
@@ -238,7 +238,7 @@ Sin dependencias entre sí, se pueden hacer en cualquier orden.
   correr los crons en horario AR, `run_pack_alerts` con fechas locales.
 - **A5. Borrar `new-class-form.tsx`** — código muerto, dos fuentes de verdad.
 
-## Fase B — Catálogo: profesores, salas y tipos de clase
+## Fase B — Catálogo: profesores, salas y tipos de clase ✅ (18-ago-2026)
 
 - **B1. Tabla `teachers`** (#9) — CRUD mínimo en admin, `class_templates.teacher` pasa a
   FK. Migrar los 3 nombres existentes (ojo con la variante sin tildes).

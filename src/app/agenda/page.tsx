@@ -10,7 +10,14 @@ import Link from "next/link";
 import type { Database } from "@/types/database";
 
 type Booking = Database["public"]["Tables"]["bookings"]["Row"] & {
-  class_templates: { name: string; time_start: string; teacher: string; room: string } | null;
+  class_templates:
+    | {
+        name: string;
+        time_start: string;
+        teachers: { full_name: string } | null;
+        rooms: { name: string } | null;
+      }
+    | null;
 };
 
 const MNAMES = [
@@ -73,7 +80,7 @@ export default function AgendaPage() {
 
     const { data: b } = await supabase
       .from("bookings")
-      .select("*, class_templates(name, time_start, teacher, room)")
+      .select("*, class_templates(name, time_start, teachers(full_name), rooms(name))")
       .eq("user_id", user.id)
       .gte("date", start)
       .lte("date", end)
@@ -304,7 +311,7 @@ export default function AgendaPage() {
                     {cls?.name || "Clase"}
                   </div>
                   <div className="mt-[2px] text-xs text-muted-foreground">
-                    {cls?.time_start?.slice(0, 5) || ""} · {cls?.teacher || ""} · {cls?.room || ""}
+                    {cls?.time_start?.slice(0, 5) || ""} · {cls?.teachers?.full_name || ""} · {cls?.rooms?.name || ""}
                   </div>
                   {(b.status === "confirmed" || b.status === "waitlist") && (
                     <div className="mt-[6px] flex flex-col gap-0.5">

@@ -10,6 +10,7 @@ export interface AdminClass {
   type: Discipline;
   room: string;
   teacher: string;
+  classType: string;
   time: string;
   end: string;
   taken: number;
