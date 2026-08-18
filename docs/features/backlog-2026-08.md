@@ -44,7 +44,12 @@ para que elija un pack válido para esa clase concreta.
 **Estado:** `packs.period` admite `'per_class'` pero nada en el flujo lo trata distinto:
 un pack de 1 crédito y uno de 12 se comportan igual. No existe compra de clase suelta.
 
-**⚠️ Ambigüedad a confirmar con Violeta** — ver "Decisiones abiertas" al final.
+**Definición (confirmada 18-ago-2026):** una clase suelta es una clase que **no está
+dentro de ningún pack**. O sea: se define por pertenencia, no por recurrencia. Una vez
+que exista la relación pack ↔ clase (#2), "suelta" es simplemente una `class_template`
+sin ninguna fila en esa tabla — no hace falta un flag aparte.
+
+Queda pendiente cómo se cobra y se reserva: ver decisión 1 en "Decisiones abiertas".
 
 ---
 
@@ -190,13 +195,13 @@ abiertas.
 
 # Decisiones abiertas (para confirmar con Violeta)
 
-1. **"Clases sueltas"** — ¿significa (a) una clase que no pertenece a ningún pack y se
-   paga individual, (b) una clase que pasa una sola vez (no recurrente), o (c) las dos?
-   Cambia el diseño: (a) es precio en la clase, (b) es fecha fija en vez de día de semana.
+1. ~~**"Clases sueltas"**~~ — **resuelto 18-ago-2026**: es una clase que no pertenece a
+   ningún pack, y lleva **su propio precio**. La alumna la paga individual, sin
+   necesitar un pack activo.
 
-2. **Alcance de los packs** — ¿el pack se limita por **clase específica**
-   ("Pilates Reformer Lunes 09:00"), por **tipo de clase** (Reformer vs Mat), o por
-   **horario** (pack mañana / pack tarde)? Determina la tabla de relación.
+2. ~~**Alcance de los packs**~~ — **resuelto 18-ago-2026**: el pack se arma **por tipo
+   de clase** (Reformer, Mat, etc.), no por clase puntual del horario. Sobrevive a los
+   cambios de grilla: si Violeta mueve el Reformer de las 9 a las 10, el pack la sigue.
 
 3. **Descuentos** — ¿es un porcentaje que Violeta le clava a una alumna
    ("a Fulana 20% siempre"), un código promocional que la alumna tipea, o un precio
@@ -233,27 +238,43 @@ Sin dependencias entre sí, se pueden hacer en cualquier orden.
   correr los crons en horario AR, `run_pack_alerts` con fechas locales.
 - **A5. Borrar `new-class-form.tsx`** — código muerto, dos fuentes de verdad.
 
-## Fase B — Catálogo: profesores, salas y packs
+## Fase B — Catálogo: profesores, salas y tipos de clase
 
 - **B1. Tabla `teachers`** (#9) — CRUD mínimo en admin, `class_templates.teacher` pasa a
   FK. Migrar los 3 nombres existentes (ojo con la variante sin tildes).
 - **B2. Tabla `rooms`** — mismo tratamiento, saca el CHECK constraint de `room`.
-- **B3. Pantalla `/admin/packs`** (#1) — listado + alta/edición/baja, precio en pesos con
+- **B3. Tabla `class_types`** — **nueva, salió de la decisión 2.** Reformer, Mat,
+  Cadillac, etc. Es la unidad sobre la que se arman los packs.
+
+  > ⚠️ Hoy `room` mezcla sala con tipo: `'Reformer'` es uno de los tres valores
+  > permitidos de sala. Al separar los conceptos hay que revisar las 5 clases de
+  > Pilates cargadas y decidir el tipo de cada una.
+
+- **B4. Pantalla `/admin/packs`** (#1) — listado + alta/edición/baja, precio en pesos con
   conversión a centavos, activar/desactivar, orden. **Desbloquea la home**, que hoy está
   vacía.
-- **B4. Clase única vs recurrente** (#12) — `class_templates` gana `recurrence`
+- **B5. Clase única vs recurrente** (#12) — `class_templates` gana `recurrence`
   (`weekly` | `once`) + `specific_date`; el generador de agenda respeta ambas. Checkbox
   real en el formulario de creación.
 
-## Fase C — Packs ↔ clases y clases sueltas
+## Fase C — Packs ↔ tipos de clase y clases sueltas
 
-Depende de B3 y de las decisiones 1 y 2.
+Depende de B3 y B4.
 
-- **C1. Tabla de relación pack ↔ clases** (#2), con la granularidad que decida Violeta.
-- **C2. Reescribir `book_spot()`** para elegir un pack **válido para esa clase** en vez
-  del más reciente. Es la parte delicada: toca la función de reserva que ya está en
-  producción con 264 bookings.
-- **C3. Clases sueltas** (#3) según la definición que se confirme.
+- **C1. Tabla `pack_class_types`** (#2) — qué tipos habilita cada pack.
+- **C2. `class_templates.price`** (#3) — precio individual, en centavos. Una clase es
+  **suelta** cuando su tipo no está en ningún pack activo, o cuando se la marca a mano
+  con `is_standalone` (ver nota abajo).
+- **C3. Reescribir `book_spot()`** — que elija un pack **cuyo `class_type` cubra esa
+  clase**, en vez del más reciente; y que las sueltas no consuman créditos sino que
+  vayan por el camino de pago individual. Es la parte delicada: toca la función de
+  reserva que ya está en producción con 264 bookings.
+
+> **Supuesto tomado (confirmar con Violeta):** como la pertenencia se deriva del *tipo*,
+> por defecto todas las clases de un tipo caen dentro del mismo pack. Para poder dejar
+> una clase puntual afuera (una masterclass de Reformer que se cobra aparte, por
+> ejemplo) agrego un `is_standalone` por clase que pisa la regla del tipo. Si Violeta
+> nunca necesita esa excepción, la columna sobra y se saca.
 
 ## Fase D — Dinero
 
