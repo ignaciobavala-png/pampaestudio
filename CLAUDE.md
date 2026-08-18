@@ -149,6 +149,13 @@ preservar el comportamiento anterior.
 **Alumna**: `/` (packs) · `/clases` · `/clases/[id]` · `/pago` · `/confirmacion` ·
 `/agenda` · `/perfil` · `/login`
 
+**Auth**: `/recuperar` (pide el mail) · `/nueva-clave` (setea la contraseña) ·
+`/auth/confirm` (route handler con `verifyOtp`)
+
+> `/auth/**` está **excluido del matcher del middleware** (`src/middleware.ts`):
+> `/auth/confirm` setea las cookies de sesión con `verifyOtp` y el middleware
+> las pisaría.
+
 **Admin**: `/admin` (hoy) · `/admin/semana` · `/admin/clientes` ·
 `/admin/packs` · `/admin/catalogo` · `/admin/nueva-clase`
 
@@ -183,14 +190,14 @@ está en **`docs/features/backlog-2026-08.md`**. Leerlo antes de seguir.
 
 - [ ] `SUPABASE_SERVICE_ROLE_KEY` y `CRON_SECRET` en `.env.local` y en Vercel
 - [ ] SMTP propio (Resend) → destraba la edición de templates de email
-- [ ] Pegar los templates con `token_hash` en Supabase (ver `docs/email-templates/`)
+- [ ] Pegar los templates con `token_hash` en Supabase — **bloqueado por el SMTP**:
+      el flujo de reseteo ya está hecho en la app, ver `docs/email-templates/README.md`
 - [ ] Integración Mercado Pago → **después** de `payments` y `settings`: sin
       registro de pagos ni datos bancarios cargados es construir sobre arena
 - [ ] Una clase suelta se puede reservar pero **no hay forma de cobrarla**
       (queda `pending`); el flujo de cobro es la fase D
 - [ ] El admin no tiene dónde ver quién debe plata
 - [ ] Botones placeholder en admin: Recordatorio, Duplicar clase, Asistencia, Exportar
-- [ ] Rama `feat/reseteo-password` (cabf893) **sin mergear** a main
 - [ ] Revisar que el tipo de clase de las 5 clases activas quedó bien: se
       infirió del nombre al separar sala de tipo
 
