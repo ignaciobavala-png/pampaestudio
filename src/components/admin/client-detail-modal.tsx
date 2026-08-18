@@ -12,6 +12,7 @@ import {
 } from "@/app/admin/clientes/actions";
 import type { AdminClient, AdminPack, ClientHistoryItem } from "@/lib/admin-types";
 import { cn } from "@/lib/utils";
+import { formatPhone } from "@/lib/phone";
 
 const HISTORY_STATUS: Record<string, { label: string; cls: string }> = {
   confirmed: { label: "Confirmada", cls: "text-primary bg-bordo-surface" },
@@ -28,31 +29,41 @@ interface ClientDetailModalProps {
   onUpdate: () => void;
 }
 
-export function ClientDetailModal({ open, client, onClose, onUpdate }: ClientDetailModalProps) {
+/**
+ * El contenido se monta cuando el modal se abre con una alumna, así el estado
+ * arranca del cliente actual sin tener que resetearlo con un efecto. La `key`
+ * fuerza el remonte si se pasa de una alumna a otra sin cerrar el modal.
+ */
+export function ClientDetailModal(props: ClientDetailModalProps) {
+  if (!props.open || !props.client) return null;
+  return <ClientDetailModalContent key={props.client.id} {...props} client={props.client} />;
+}
+
+function ClientDetailModalContent({
+  client,
+  onClose,
+  onUpdate,
+}: ClientDetailModalProps & { client: AdminClient }) {
   const [packs, setPacks] = useState<AdminPack[]>([]);
   const [showPackPicker, setShowPackPicker] = useState(false);
-  const [selectedPackId, setSelectedPackId] = useState<string | null>(null);
+  const [selectedPackId, setSelectedPackId] = useState<string | null>(client.packId);
   const [loading, setLoading] = useState<"approve" | "pack" | "freeze" | "medical" | null>(null);
   const [history, setHistory] = useState<ClientHistoryItem[]>([]);
   const [editMedical, setEditMedical] = useState(false);
-  const [medNotes, setMedNotes] = useState("");
-  const [medLevel, setMedLevel] = useState("");
+  const [medNotes, setMedNotes] = useState(client.medicalNotes);
+  const [medLevel, setMedLevel] = useState(client.experienceLevel ?? "");
 
   useEffect(() => {
-    if (open) fetchPacks().then(setPacks);
-  }, [open]);
-
-  useEffect(() => {
-    if (open && client) {
-      setSelectedPackId(client.packId);
-      setShowPackPicker(false);
-      setEditMedical(false);
-      setMedNotes(client.medicalNotes);
-      setMedLevel(client.experienceLevel ?? "");
-      setHistory([]);
-      fetchClientHistory(client.id).then(setHistory);
-    }
-  }, [open, client]);
+    let cancelled = false;
+    Promise.all([fetchPacks(), fetchClientHistory(client.id)]).then(([p, h]) => {
+      if (cancelled) return;
+      setPacks(p);
+      setHistory(h);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [client.id]);
 
   const handleOverlayClick = useCallback(
     (e: React.MouseEvent) => {
@@ -99,8 +110,6 @@ export function ClientDetailModal({ open, client, onClose, onUpdate }: ClientDet
     onUpdate();
   };
 
-  if (!open || !client) return null;
-
   const selectedPack = packs.find((p) => p.id === selectedPackId);
 
   return (
@@ -142,7 +151,7 @@ export function ClientDetailModal({ open, client, onClose, onUpdate }: ClientDet
             </div>
             <div>
               <div className="font-serif text-[22px]">{client.name}</div>
-              <div className="text-xs text-ink-dim mt-0.5">{client.email || client.phone}</div>
+              <div className="text-xs text-ink-dim mt-0.5">{client.email || formatPhone(client.phone)}</div>
             </div>
           </div>
 

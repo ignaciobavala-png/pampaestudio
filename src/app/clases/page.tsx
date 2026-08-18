@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
@@ -9,8 +9,16 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { cn, toLocalDateStr } from "@/lib/utils";
 import type { Database } from "@/types/database";
+import {
+  CLASS_TEMPLATE_SELECT,
+  dayOccurrenceFilter,
+  roomName,
+  teacherName,
+  type ClassTemplateJoins,
+} from "@/lib/classes";
 
-type ClassTemplate = Database["public"]["Tables"]["class_templates"]["Row"];
+type ClassTemplate = Database["public"]["Tables"]["class_templates"]["Row"] &
+  ClassTemplateJoins;
 
 const DAY_NAMES = [
   "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo",
@@ -42,35 +50,42 @@ function getWeekDays(offset: number) {
 export default function ClasesPage() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const [filter, setFilter] = useState<string>("todos");
   const [weekOffset, setWeekOffset] = useState(0);
   const [selDay, setSelDay] = useState(() => new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
   const [templates, setTemplates] = useState<ClassTemplate[]>([]);
   const [bookingsMap, setBookingsMap] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
 
   const week = getWeekDays(weekOffset);
   const day = week[selDay];
-  const filters = ["todos", "Yoga", "Pilates"];
 
-  const fetchTemplates = useCallback(async () => {
-    setLoading(true);
-    const supabase = createClient();
-    const date = getWeekDays(weekOffset)[selDay].date;
+  // Clave del día que se está mirando: mientras la cargada no coincida, se
+  // muestra el esqueleto.
+  const dayKey = `${weekOffset}:${selDay}`;
 
-    const { data: tmpls } = await supabase
-      .from("class_templates")
-      .select("*")
-      .eq("day_of_week", selDay)
-      .eq("is_active", true)
-      .order("time_start");
+  // Una sola pasada: se traen las clases y sus cupos, y recién ahí se aplica
+  // todo junto. Antes se seteaban las clases antes de tener los cupos, así que
+  // un día sin clases se quedaba con los cupos del día anterior; y tocar días
+  // rápido podía dejar que una respuesta vieja pisara a la nueva.
+  useEffect(() => {
+    let cancelled = false;
 
-    setTemplates(tmpls || []);
+    (async () => {
+      const supabase = createClient();
+      const date = getWeekDays(weekOffset)[selDay].date;
 
-    if (tmpls && tmpls.length > 0) {
+      const { data: tmpls } = await supabase
+        .from("class_templates")
+        .select(CLASS_TEMPLATE_SELECT)
+        .eq("is_active", true)
+        .or(dayOccurrenceFilter(selDay, date))
+        .order("time_start");
+
+      const list = (tmpls ?? []) as ClassTemplate[];
       const map: Record<string, number> = {};
+
       await Promise.all(
-        tmpls.map(async (t) => {
+        list.map(async (t) => {
           const { data } = await supabase.rpc("count_confirmed", {
             p_template_id: t.id,
             p_date: date,
@@ -78,19 +93,19 @@ export default function ClasesPage() {
           map[t.id] = (data as number) || 0;
         })
       );
+
+      if (cancelled) return;
+      setTemplates(list);
       setBookingsMap(map);
-    }
+      setLoadedKey(dayKey);
+    })();
 
-    setLoading(false);
-  }, [selDay, weekOffset]);
+    return () => {
+      cancelled = true;
+    };
+  }, [selDay, weekOffset, dayKey]);
 
-  useEffect(() => {
-    fetchTemplates();
-  }, [fetchTemplates]);
-
-  const filtered = templates.filter(
-    (t) => filter === "todos" || t.discipline === filter
-  );
+  const loading = loadedKey !== dayKey;
 
   return (
     <AppShell>
@@ -134,23 +149,6 @@ export default function ClasesPage() {
             ›
           </button>
         </div>
-      </div>
-
-      <div className="flex gap-[7px] overflow-x-auto px-[22px] pb-1 pt-[14px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {filters.map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={cn(
-              "shrink-0 cursor-pointer whitespace-nowrap rounded-[100px] border border-[rgba(26,25,31,.14)] px-[15px] py-2 text-[12.5px] font-medium transition-all",
-              filter === f
-                ? "border-foreground bg-foreground text-white"
-                : "bg-transparent text-muted-foreground hover:border-ink-dim"
-            )}
-          >
-            {f === "todos" ? "Todos" : f}
-          </button>
-        ))}
       </div>
 
       <div className="flex gap-2 overflow-x-auto px-[22px] py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -207,17 +205,15 @@ export default function ClasesPage() {
               />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : templates.length === 0 ? (
           <div className="py-[60px] px-[30px] text-center">
             <div className="font-serif italic text-[30px] text-[#DBDAD6]">○</div>
             <p className="mt-2 text-[13px] text-muted-foreground leading-relaxed">
-              {templates.length === 0
-                ? "Día de descanso."
-                : `Sin clases de ${filter} este día.`}
+              Día de descanso.
             </p>
           </div>
         ) : (
-          filtered.map((c, idx) => {
+          templates.map((c, idx) => {
             const taken = bookingsMap[c.id] || 0;
             const free = c.max_capacity - taken;
             const full = free <= 0;
@@ -238,8 +234,8 @@ export default function ClasesPage() {
                     time: c.time_start.slice(0, 5),
                     end: c.time_end.slice(0, 5),
                     type: c.discipline,
-                    teacher: c.teacher,
-                    room: c.room,
+                    teacher: teacherName(c),
+                    room: roomName(c),
                     taken: String(taken),
                     max: String(c.max_capacity),
                     day: String(selDay),
@@ -272,7 +268,7 @@ export default function ClasesPage() {
                     {c.name}
                   </h3>
                   <p className="mt-[2px] text-[12.5px] text-muted-foreground">
-                    {c.teacher} · {c.room}
+                    {teacherName(c)} · {roomName(c)}
                   </p>
                   <div className="mt-[7px] flex items-center gap-2">
                     <div className="h-[3px] max-w-[84px] flex-1 overflow-hidden rounded-[2px] bg-[#DBDAD6]">

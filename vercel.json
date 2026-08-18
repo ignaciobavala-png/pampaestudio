@@ -1,12 +1,7 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
-    {
-      "path": "/api/cron/keep-alive",
-      "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/pack-alerts",
-      "schedule": "0 12 * * *"
-    }
+    { "path": "/api/cron/keep-alive", "schedule": "0 12 * * *" },
+    { "path": "/api/cron/pack-alerts", "schedule": "30 12 * * *" }
   ]
 }

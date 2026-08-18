@@ -17,6 +17,7 @@ function ConfirmacionContent() {
   const day = params.get("day") || "";
   const credits = params.get("credits");
   const pos = params.get("pos");
+  const pagar = params.get("pagar");
 
   const rows = [
     ["Clase", name],
@@ -26,6 +27,8 @@ function ConfirmacionContent() {
     ["Sala", room],
     ...(!isWL && credits !== null && credits !== "" ? [["Créditos restantes", credits]] : []),
     ...(isWL && pos ? [["Posición en lista", `#${pos}`]] : []),
+    // Clase suelta: no salió de un pack, queda a pagar en el estudio.
+    ...(pagar ? [["A abonar", `$${Number(pagar).toLocaleString("es-AR")}`]] : []),
   ].filter(([, v]) => v);
 
   return (

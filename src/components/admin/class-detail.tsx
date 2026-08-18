@@ -24,7 +24,7 @@ interface ClassDetailProps {
 export function ClassDetail({ cls, max, onClose, onMaxChange, onCancelClass, onAddStudent, onReschedule, index, date, dateLabel }: ClassDetailProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [moveTarget, setMoveTarget] = useState<AdminStudent | null>(null);
-  const { name, type, room, teacher, time, end, taken } = cls;
+  const { name, classType, room, teacher, time, end, taken } = cls;
   const free = max - taken;
   const pct = Math.round((taken / max) * 100);
   const full = free <= 0;
@@ -50,7 +50,7 @@ export function ClassDetail({ cls, max, onClose, onMaxChange, onCancelClass, onA
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="mb-1.5 text-[11px] font-semibold tracking-[0.09em] uppercase text-ink-dim">
-                {type} · {room}
+                {classType} · {room}
               </div>
               <h2 className="pr-9 font-serif text-[28px] leading-[1.05] tracking-[-0.02em]">
                 {name}

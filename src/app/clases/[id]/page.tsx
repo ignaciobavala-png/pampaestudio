@@ -7,13 +7,20 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/lib/store/auth-store";
 import type { Database } from "@/types/database";
+import {
+  CLASS_TEMPLATE_SELECT,
+  classTypeName,
+  roomName,
+  teacherName,
+  type ClassTemplateJoins,
+} from "@/lib/classes";
 
-type ClassTemplate = Database["public"]["Tables"]["class_templates"]["Row"];
+type ClassTemplate = Database["public"]["Tables"]["class_templates"]["Row"] &
+  ClassTemplateJoins;
 
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
 const CDESC: Record<string, string> = {
-  Yoga: "Práctica de respiración y movimiento fluido. Mat incluido.",
   Pilates: "Trabajo de core y postura. Apto para todos los niveles.",
 };
 
@@ -27,6 +34,7 @@ function DetalleContent() {
 
   const [template, setTemplate] = useState<ClassTemplate | null>(null);
   const [taken, setTaken] = useState(0);
+  const [isStandalone, setIsStandalone] = useState(false);
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [bookingError, setBookingError] = useState<string | null>(null);
@@ -41,7 +49,7 @@ function DetalleContent() {
     (async () => {
       const { data: t } = await supabase
         .from("class_templates")
-        .select("*")
+        .select(CLASS_TEMPLATE_SELECT)
         .eq("id", templateId)
         .single();
       setTemplate(t);
@@ -51,6 +59,12 @@ function DetalleContent() {
         p_date: date,
       });
       setTaken((count as number) || 0);
+
+      // Suelta = ningún pack activo cubre su tipo (o está marcada a mano).
+      const { data: standalone } = await supabase.rpc("class_is_standalone", {
+        p_template_id: templateId,
+      });
+      setIsStandalone(standalone === true);
       setLoading(false);
     })();
   }, [templateId, date]);
@@ -126,7 +140,15 @@ function DetalleContent() {
       return;
     }
 
-    const res = result as { status?: string; error?: string; position?: number; credits_remaining?: number };
+    const res = result as {
+      status?: string;
+      error?: string;
+      position?: number;
+      credits_remaining?: number;
+      standalone?: boolean;
+      payment_required?: boolean;
+      price?: number | null;
+    };
 
     if (res.error) {
       setBooking("error");
@@ -144,12 +166,13 @@ function DetalleContent() {
     const sp = new URLSearchParams({
       name: template?.name ?? "",
       time: `${time} – ${end}`,
-      teacher: template?.teacher ?? "",
-      room: template?.room ?? "",
+      teacher: template ? teacherName(template) : "",
+      room: template ? roomName(template) : "",
       day: dayLabel,
       credits: String(res.credits_remaining ?? ""),
       wl: res.status === "waitlist" ? "true" : "false",
       pos: String(res.position ?? ""),
+      pagar: res.payment_required ? String((res.price ?? 0) / 100) : "",
     });
     router.push(`/confirmacion?${sp.toString()}`);
   };
@@ -174,18 +197,34 @@ function DetalleContent() {
 
       <div className="px-6 pt-2 pb-6">
         <div className="mb-2 text-[11px] font-semibold tracking-[0.1em] uppercase text-ink-dim">
-          {template.discipline} · {template.room}
+          {classTypeName(template)} · {roomName(template)}
         </div>
         <h1 className="font-serif text-[28px] leading-[1.08] tracking-[-0.02em] mb-3">
           {template.name}
         </h1>
 
+        {isStandalone && (
+          <p className="mb-3 rounded-[12px] bg-muted px-3.5 py-2.5 text-[12.5px] text-muted-foreground leading-relaxed">
+            Clase suelta: no se descuenta de tu pack, se abona aparte.
+          </p>
+        )}
+
         <div className="my-[14px] border-t border-border">
           {[
-            ["Instructora", template.teacher],
+            ["Instructora", teacherName(template)],
             ["Día", `${dayName} ${dayN} ${MONTHS[new Date(date + "T12:00:00").getMonth()]}`],
             ["Horario", `${time} – ${end}`],
-            ["Sala", template.room],
+            ["Sala", roomName(template)],
+            ...(isStandalone
+              ? [
+                  [
+                    "Precio",
+                    template.price
+                      ? `$${(template.price / 100).toLocaleString("es-AR")}`
+                      : "A confirmar",
+                  ] as [string, string],
+                ]
+              : []),
           ].map(([k, v]) => (
             <div
               key={k}

@@ -1,4 +1,5 @@
 import type { AdminClient } from "@/lib/admin-types";
+import { formatPhone } from "@/lib/phone";
 
 interface ClientCardProps {
   client: AdminClient;
@@ -21,7 +22,7 @@ export function ClientCard({ client, onClick }: ClientCardProps) {
         </div>
         <div className="min-w-0">
           <div className="text-sm font-semibold">{client.name}</div>
-          <div className="text-[11px] text-ink-dim mt-0.5">{client.email || client.phone}</div>
+          <div className="text-[11px] text-ink-dim mt-0.5">{client.email || formatPhone(client.phone)}</div>
         </div>
       </div>
       {/* Stats rows */}

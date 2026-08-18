@@ -12,8 +12,17 @@ interface AddStudentModalProps {
   onConfirm: (userId: string) => Promise<void>;
 }
 
-export function AddStudentModal({
-  open,
+/**
+ * El contenido se monta recién cuando el modal se abre, así el estado (búsqueda,
+ * pendiente) arranca limpio solo. Antes se reseteaba a mano desde un efecto, que
+ * además provocaba un render en cascada en cada apertura.
+ */
+export function AddStudentModal(props: AddStudentModalProps) {
+  if (!props.open) return null;
+  return <AddStudentModalContent {...props} />;
+}
+
+function AddStudentModalContent({
   className,
   excludeUserIds,
   onClose,
@@ -24,11 +33,14 @@ export function AddStudentModal({
   const [pending, setPending] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open) {
-      setSearch("");
-      fetchClientOptions().then(setOptions);
-    }
-  }, [open]);
+    let cancelled = false;
+    fetchClientOptions().then((o) => {
+      if (!cancelled) setOptions(o);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleOverlayClick = useCallback(
     (e: React.MouseEvent) => {
@@ -48,8 +60,6 @@ export function AddStudentModal({
     await onConfirm(userId);
     setPending(null);
   };
-
-  if (!open) return null;
 
   return (
     <div

@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { createManagedUser, createAuthUser } from "@/app/admin/clientes/actions";
 import { cn } from "@/lib/utils";
+import { PhoneInput } from "@/components/ui/phone-input";
 
 interface AddClientModalProps {
   open: boolean;
@@ -146,11 +147,11 @@ export function AddClientModal({ open, onClose, onCreated }: AddClientModalProps
                     placeholder="Email *"
                   />
                 )}
-                <input
+                <PhoneInput
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className={inputCls}
-                  placeholder="Teléfono (opcional)"
+                  onChange={setPhone}
+                  className={cn(inputCls, "flex items-center gap-2")}
+                  inputClassName="text-[13px] text-foreground placeholder:text-ink-dim"
                 />
                 {mode === "auth" && (
                   <input

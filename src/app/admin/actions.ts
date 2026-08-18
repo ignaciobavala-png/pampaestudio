@@ -1,14 +1,19 @@
 "use server";
 
-import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { getServerSupabase as getSupabase } from "@/lib/supabase/admin-guard";
 import type { Database } from "@/types/database";
-import type { AdminClass, ClientOption, TemplateOption } from "@/lib/admin-types";
+import type { AdminClass, ClientOption, Discipline, TemplateOption } from "@/lib/admin-types";
+import {
+  CLASS_TEMPLATE_SELECT,
+  classTypeName,
+  dayOccurrenceFilter,
+  roomName,
+  teacherName,
+} from "@/lib/classes";
 
 const DISCIPLINE_COLORS: Record<string, string> = {
-  Yoga: "var(--color-primary)",
   Pilates: "#9A7B2E",
 };
 
@@ -29,24 +34,6 @@ function getInitials(name: string): string {
   return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 }
 
-async function getSupabase() {
-  const cookieStore = await cookies();
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll(); },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
-}
-
 export type AdminDayResult = {
   classes: AdminClass[];
   maxes: number[];
@@ -61,9 +48,9 @@ export async function fetchAdminDay(
 
   const { data: templates } = await supabase
     .from("class_templates")
-    .select("*")
-    .eq("day_of_week", dayIndex)
+    .select(CLASS_TEMPLATE_SELECT)
     .eq("is_active", true)
+    .or(dayOccurrenceFilter(dayIndex, date))
     .order("time_start");
 
   if (!templates || templates.length === 0) {
@@ -132,9 +119,10 @@ export async function fetchAdminDay(
     classesData.push({
       templateId: t.id,
       name: t.name,
-      type: t.discipline as "Yoga" | "Pilates",
-      room: t.room,
-      teacher: t.teacher,
+      type: t.discipline as Discipline,
+      room: roomName(t),
+      teacher: teacherName(t),
+      classType: classTypeName(t),
       time: t.time_start.slice(0, 5),
       end: t.time_end.slice(0, 5),
       taken,
