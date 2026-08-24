@@ -7,6 +7,32 @@ import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/store/auth-store";
 import Link from "next/link";
 
+// Los mensajes de GoTrue vienen en inglés y el más frecuente ("Invalid login
+// credentials") también tapa el caso de la cuenta sin confirmar, que es el que
+// más consultas genera.
+function traducirErrorAuth(msg: string): string {
+  const m = msg.toLowerCase();
+  if (m.includes("email not confirmed")) {
+    return "Todavía no confirmaste tu mail. Buscá el mail de Pampa Estudio (revisá spam) y abrí el link.";
+  }
+  if (m.includes("invalid login credentials")) {
+    return "Mail o contraseña incorrectos. Si acabás de registrarte, primero tenés que confirmar tu mail.";
+  }
+  if (m.includes("rate limit") || m.includes("too many requests")) {
+    return "Demasiados intentos. Esperá unos minutos y probá de nuevo.";
+  }
+  if (m.includes("error sending confirmation") || m.includes("error sending")) {
+    return "No pudimos enviar el mail de confirmación. Escribinos y te damos de alta a mano.";
+  }
+  if (m.includes("password should be at least")) {
+    return "La contraseña tiene que tener al menos 6 caracteres.";
+  }
+  if (m.includes("user already registered")) {
+    return "Ese mail ya tiene una cuenta. Iniciá sesión, o usá \"Olvidé mi contraseña\".";
+  }
+  return msg;
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -26,7 +52,7 @@ function LoginForm() {
         : null
   );
   const [loading, setLoading] = useState(false);
-  const [registered, setRegistered] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   // Redirigimos apenas hay sesión (user), sin esperar el profile: en prod
   // el fetch del profile puede colgarse (lock de @supabase/ssr) y no debe
@@ -44,14 +70,30 @@ function LoginForm() {
     setLoading(true);
 
     if (mode === "register") {
-      const { error: err } = await signUp(email, password, fullName);
+      const { error: err, needsConfirmation, alreadyRegistered } = await signUp(
+        email,
+        password,
+        fullName
+      );
+      setLoading(false);
+
       if (err) {
-        setError(err);
-        setLoading(false);
-      } else {
-        setLoading(false);
-        setRegistered(true);
+        setError(traducirErrorAuth(err));
+      } else if (alreadyRegistered) {
+        // No es un error de Supabase: el registro "salió bien" con un user
+        // vacío. Si no lo decimos, la alumna reintenta para siempre.
         setMode("login");
+        setError(
+          "Ese mail ya tiene una cuenta. Iniciá sesión, o usá \"Olvidé mi contraseña\"."
+        );
+      } else if (needsConfirmation) {
+        setMode("login");
+        setNotice(
+          `Te mandamos un mail a ${email} para confirmar la cuenta. Abrilo antes de iniciar sesión — puede tardar unos minutos y a veces cae en spam.`
+        );
+      } else {
+        setMode("login");
+        setNotice("Cuenta creada. Ya podés iniciar sesión.");
       }
     } else {
       const dest = isAdminLogin ? "/admin" : next;
@@ -75,7 +117,7 @@ function LoginForm() {
       }));
       if (err && !redirected) {
         window.clearInterval(iv);
-        setError(err);
+        setError(traducirErrorAuth(err));
         setLoading(false);
       }
     }
@@ -106,7 +148,7 @@ function LoginForm() {
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => { setMode("login"); setError(null); }}
+              onClick={() => { setMode("login"); setError(null); setNotice(null); }}
               className={`flex-1 cursor-pointer rounded-[11px] border px-3 py-[9px] text-[13px] font-medium transition-all ${
                 mode === "login"
                   ? "border-foreground bg-foreground text-white"
@@ -117,7 +159,7 @@ function LoginForm() {
             </button>
             <button
               type="button"
-              onClick={() => { setMode("register"); setError(null); }}
+              onClick={() => { setMode("register"); setError(null); setNotice(null); }}
               className={`flex-1 cursor-pointer rounded-[11px] border px-3 py-[9px] text-[13px] font-medium transition-all ${
                 mode === "register"
                   ? "border-foreground bg-foreground text-white"
@@ -129,13 +171,13 @@ function LoginForm() {
           </div>
           )}
 
-          {registered && (
+          {notice && (
             <div className="rounded-[10px] bg-[#E8F5E9] px-3 py-2.5 text-[12px] text-[#2E7D32] leading-relaxed">
-              ✓ Cuenta creada. Ya podés iniciar sesión.
+              ✓ {notice}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-3" onChange={() => setRegistered(false)}>
+          <form onSubmit={handleSubmit} className="space-y-3" onChange={() => setNotice(null)}>
             {mode === "register" && !isAdminLogin && (
               <input
                 className="w-full rounded-[12px] border border-[rgba(26,25,31,.14)] bg-muted px-[14px] py-[13px] text-sm text-foreground outline-none transition-colors placeholder:text-ink-dim focus:border-primary focus:bg-card"

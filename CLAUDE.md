@@ -169,6 +169,28 @@ Alumna reserva clase → Ve en agenda → Puede cancelar
 > Una alumna sin aprobar entra a la app normalmente y **solo falla al reservar**.
 > Antes de debuggear auth, chequear `is_approved`.
 
+### Confirmación de mail: apagada (24-ago-2026)
+
+*Confirm email* está **desactivado** en Supabase Auth. El control de acceso real
+es `is_approved`, que el admin da a mano: pedir además confirmar el mail no
+sumaba nada y era el único punto de falla del registro.
+
+Con el SMTP built-in (2 mails/hora para todo el proyecto, remitente
+`noreply@mail.app.supabase.io`, cae en spam) los mails de confirmación casi
+nunca llegaban. Las cuentas **sí se creaban** — `/signup` devolvía 200 y la fila
+quedaba en `auth.users` sin confirmar — así que el síntoma reportado era "no
+puedo crear la cuenta" cuando en realidad era "no puedo entrar". Si vuelve a
+aparecer, mirar `confirmed_at` en `auth.users` antes que nada.
+
+El reseteo de contraseña **sigue necesitando mail**, así que el SMTP propio
+(Resend) sigue pendiente. Ver `docs/email-templates/README.md`.
+
+`signUp` distingue tres desenlaces (`@/lib/store/auth-store`): error, cuenta
+sin confirmar (`!data.session`) y **mail ya registrado**. Este último no llega
+como error: Supabase devuelve 200 con un user vacío (`identities: []`) para no
+filtrar qué direcciones existen. Tratarlo como éxito hace que la alumna
+reintente el registro para siempre.
+
 ## Estado del backlog (18-ago-2026)
 
 La lista completa, con el estado de cada feature y las decisiones de la dueña,

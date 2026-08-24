@@ -5,6 +5,17 @@ import type { Database } from "@/types/database";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
+// El registro no termina con la cuenta creada: falta confirmar el mail. Y
+// Supabase, para no filtrar qué direcciones ya existen, devuelve 200 con un
+// user vacío cuando el mail ya está registrado (identities = []) en vez de un
+// error. Distinguir los tres casos es lo que evita el "creé la cuenta y no
+// puedo entrar".
+export type SignUpResult = {
+  error: string | null;
+  needsConfirmation: boolean;
+  alreadyRegistered: boolean;
+};
+
 interface AuthState {
   user: User | null;
   profile: Profile | null;
@@ -14,7 +25,11 @@ interface AuthState {
   initialize: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signInWithGoogle: () => Promise<void>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName: string
+  ) => Promise<SignUpResult>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   setUser: (user: User | null) => void;
@@ -79,7 +94,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signUp: async (email, password, fullName) => {
     const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -91,8 +106,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       },
     });
 
-    if (error) return { error: error.message };
-    return { error: null };
+    if (error) {
+      return { error: error.message, needsConfirmation: false, alreadyRegistered: false };
+    }
+
+    // Mail ya registrado: Supabase devuelve un user "fantasma" sin identities.
+    const alreadyRegistered = (data.user?.identities?.length ?? 0) === 0;
+
+    // Sin session, la cuenta existe pero está sin confirmar: no puede entrar
+    // hasta abrir el link del mail.
+    const needsConfirmation = !data.session;
+
+    return { error: null, needsConfirmation, alreadyRegistered };
   },
 
   signOut: async () => {

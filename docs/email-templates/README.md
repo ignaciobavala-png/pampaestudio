@@ -72,12 +72,18 @@ Guardar. En **Rate Limits**, subir el envío de mails por hora (default 30) si h
 **Authentication → URL Configuration**
 
 - Site URL: `https://www.pampaestudio.com`
-- Redirect URLs:
-  - `https://www.pampaestudio.com/api/auth/callback`
-  - `https://pampaestudio.com/api/auth/callback`
-  - `http://localhost:3000/api/auth/callback`
+- Redirect URLs — **hacen falta las dos familias**:
+  - `.../auth/confirm` → los links de los mails (confirmación y reseteo)
+  - `.../api/auth/callback` → solo el login con Google
 
-Sin esto, los links de los mails redirigen al Site URL por defecto y el login queda colgado.
+  Con los tres orígenes cada una (prod con `www`, prod sin `www`, `localhost:3000`)
+  más el wildcard de los previews:
+  `https://pampaestudio-*-ethoslogs-projects.vercel.app/auth/confirm`
+
+Sin el `/auth/confirm` en la lista, Supabase ignora el `{{ .RedirectTo }}` de la plantilla
+y manda todo al Site URL: el mail llega bien pero el link no hace nada.
+
+> Verificado el 24-ago-2026: las 7 URLs están cargadas en el proyecto.
 
 ✅ Cargado el 11-ago-2026 (las tres de `/api/auth/callback`).
 
