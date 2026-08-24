@@ -169,27 +169,68 @@ Alumna reserva clase → Ve en agenda → Puede cancelar
 > Una alumna sin aprobar entra a la app normalmente y **solo falla al reservar**.
 > Antes de debuggear auth, chequear `is_approved`.
 
-### Confirmación de mail: apagada (24-ago-2026)
+### Mails de auth (24-ago-2026)
 
-*Confirm email* está **desactivado** en Supabase Auth. El control de acceso real
-es `is_approved`, que el admin da a mano: pedir además confirmar el mail no
-sumaba nada y era el único punto de falla del registro.
+**Confirm email está apagado** (`mailer_autoconfirm: true`). El control de acceso
+real es `is_approved`, que el admin da a mano: pedir además confirmar el mail no
+sumaba control, solo un paso más que se podía romper. Para chequear el estado sin
+entrar al panel:
 
-Con el SMTP built-in (2 mails/hora para todo el proyecto, remitente
-`noreply@mail.app.supabase.io`, cae en spam) los mails de confirmación casi
-nunca llegaban. Las cuentas **sí se creaban** — `/signup` devolvía 200 y la fila
-quedaba en `auth.users` sin confirmar — así que el síntoma reportado era "no
-puedo crear la cuenta" cuando en realidad era "no puedo entrar". Si vuelve a
-aparecer, mirar `confirmed_at` en `auth.users` antes que nada.
+```bash
+curl -s "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/settings" -H "apikey: <anon>" | jq .mailer_autoconfirm
+```
 
-El reseteo de contraseña **sigue necesitando mail**, así que el SMTP propio
-(Resend) sigue pendiente. Ver `docs/email-templates/README.md`.
+**SMTP**: Resend, dominio `pampaestudio.com` verificado, remitente
+`hola@pampaestudio.com`. Los mails **se entregan** — el log está en
+<https://resend.com/emails>. Las plantillas propias
+(`docs/email-templates/`) están cargadas.
 
-`signUp` distingue tres desenlaces (`@/lib/store/auth-store`): error, cuenta
-sin confirmar (`!data.session`) y **mail ya registrado**. Este último no llega
-como error: Supabase devuelve 200 con un user vacío (`identities: []`) para no
-filtrar qué direcciones existen. Tratarlo como éxito hace que la alumna
-reintente el registro para siempre.
+#### El bug que costó encontrar
+
+Reportaban "no puedo crear la cuenta". Las cuentas **se creaban**: `/signup`
+devolvía 200 y la fila quedaba en `auth.users`. El mail **se entregaba**. Lo que
+no funcionaba era el link:
+
+```
+mail entregado ✓ → click → /verify de GoTrue → vuelve con ?code= → link inválido
+```
+
+Supabase seguía con sus plantillas default, que arman el link con
+`{{ .ConfirmationURL }}` (PKCE, devuelve `code`), y `/auth/confirm` solo aceptaba
+`token_hash`. Fallaba el 100% de las veces, en cualquier dispositivo.
+
+**Orden para debuggear esto, que no es el intuitivo:**
+
+1. ¿La cuenta existe? → `select email, confirmed_at from auth.users`
+2. ¿El mail salió? → log de Resend. Si dice `delivered`, el envío no es el problema.
+3. ¿Qué asunto tiene? **En inglés = plantillas default**, y ahí está la falla.
+4. ¿Dónde pega el click? → `auth_logs`. En `/verify` = default; en `/auth/confirm` = las nuestras.
+
+`/auth/confirm` ahora acepta los dos formatos: `token_hash` (el bueno, no depende
+del navegador que pidió el mail) y `code` como red por si vuelve una plantilla
+default.
+
+#### `signUp` devuelve 200 sin que el registro sirva
+
+Tres desenlaces distintos, todos con `error: null` (`@/lib/store/auth-store`):
+
+| Caso | Cómo se detecta |
+|---|---|
+| Mail ya registrado | `data.user.identities.length === 0` — user fantasma, para no filtrar qué direcciones existen |
+| Cuenta sin confirmar | `!data.session` |
+| Listo para entrar | hay `session` |
+
+Tratar los tres como éxito es lo que hacía que la alumna intentara entrar, GoTrue
+contestara `Invalid login credentials` y reintentara el registro para siempre.
+
+#### Otras notas
+
+- Las **Redirect URLs** del proyecto necesitan las dos familias: `/auth/confirm`
+  (los mails) y `/api/auth/callback` (solo OAuth). Están las 7 cargadas, con el
+  wildcard de los previews de Vercel.
+- El proveedor de **Google está desactivado** en Supabase. Por eso se sacó
+  `signInWithGoogle` del store — ningún componente lo llamaba.
+  `/api/auth/callback` quedó en pie por si se vuelve a habilitar.
 
 ## Estado del backlog (18-ago-2026)
 

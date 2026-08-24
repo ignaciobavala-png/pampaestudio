@@ -301,6 +301,23 @@ Depende de B3 y B4.
 - **D4. Descuentos** (#7) — al final, porque necesita packs (B3), pagos (D1) y la
   decisión 3 tomada.
 
+## Fase E — Mails de auth ✅ (24-ago-2026)
+
+No estaba en el plan del 18-ago: salió de un reporte de "no puedo crear la cuenta".
+
+- **E1. Confirm email apagado.** El control real es `is_approved`; la confirmación
+  no sumaba control y era un punto de falla.
+- **E2. Plantillas propias cargadas** en Supabase, con `token_hash` en vez de
+  `{{ .ConfirmationURL }}`. Esto era el bug: el mail se entregaba pero el link
+  fallaba el 100% de las veces.
+- **E3. `/auth/confirm` acepta los dos formatos** (`token_hash` y `code`).
+- **E4. `signUp` distingue** mail ya registrado / cuenta sin confirmar / lista.
+  Errores de auth traducidos al castellano.
+- **E5. `signInWithGoogle` sacada** — el proveedor está desactivado en Supabase.
+
+Pendiente de verificar: que las plantillas quedaran bien guardadas. Se comprueba
+pidiendo un reseteo y abriendo el mail **en otro dispositivo**.
+
 ## Qué dejar afuera por ahora
 
 Mercado Pago (#pendiente viejo) va después de D1/D3: sin registro de pagos ni datos
