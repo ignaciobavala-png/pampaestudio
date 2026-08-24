@@ -315,8 +315,18 @@ No estaba en el plan del 18-ago: salió de un reporte de "no puedo crear la cuen
   Errores de auth traducidos al castellano.
 - **E5. `signInWithGoogle` sacada** — el proveedor está desactivado en Supabase.
 
-Pendiente de verificar: que las plantillas quedaran bien guardadas. Se comprueba
-pidiendo un reseteo y abriendo el mail **en otro dispositivo**.
+**Verificado el 24-ago-2026 16:03 UTC**, con el reseteo pedido desde el servidor
+(sin `code_verifier` en ningún navegador) y el mail abierto en otro dispositivo:
+
+```
+16:02:53  POST /recover   200
+16:03:37  POST /verify    200   ← verifyOtp desde /auth/confirm
+16:04:11  POST /token     200
+```
+
+El **método** es la prueba: `POST /verify` es la app llamando a `verifyOtp`. El
+patrón roto era `GET /verify` → 303, el navegador entrando directo a GoTrue
+desde el link de la plantilla default.
 
 ## Qué dejar afuera por ahora
 
