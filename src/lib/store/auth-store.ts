@@ -24,7 +24,6 @@ interface AuthState {
 
   initialize: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signInWithGoogle: () => Promise<void>;
   signUp: (
     email: string,
     password: string,
@@ -82,16 +81,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return { error: null };
   },
 
-  signInWithGoogle: async () => {
-    const supabase = createClient();
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${location.origin}/api/auth/callback`,
-      },
-    });
-  },
-
   signUp: async (email, password, fullName) => {
     const supabase = createClient();
     const { data, error } = await supabase.auth.signUp({
@@ -100,8 +89,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       options: {
         data: { full_name: fullName },
         // /auth/confirm (token_hash), no /api/auth/callback (PKCE): el mail
-        // se puede abrir en otro dispositivo. /api/auth/callback queda solo
-        // para el OAuth de Google.
+        // se puede abrir en otro dispositivo.
         emailRedirectTo: `${location.origin}/auth/confirm`,
       },
     });
