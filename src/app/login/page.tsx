@@ -16,7 +16,9 @@ function traducirErrorAuth(msg: string): string {
     return "Todavía no confirmaste tu mail. Buscá el mail de Pampa Estudio (revisá spam) y abrí el link.";
   }
   if (m.includes("invalid login credentials")) {
-    return "Mail o contraseña incorrectos. Si acabás de registrarte, primero tenés que confirmar tu mail.";
+    // GoTrue no distingue mail inexistente de contraseña mal puesta, y está
+    // bien que no lo haga: decirlo filtraría qué direcciones tienen cuenta.
+    return "Contraseña incorrecta. Revisá el mail y la contraseña e intentá de nuevo.";
   }
   if (m.includes("rate limit") || m.includes("too many requests")) {
     return "Demasiados intentos. Esperá unos minutos y probá de nuevo.";
@@ -30,7 +32,30 @@ function traducirErrorAuth(msg: string): string {
   if (m.includes("user already registered")) {
     return "Ese mail ya tiene una cuenta. Iniciá sesión, o usá \"Olvidé mi contraseña\".";
   }
+  // 500 de GoTrue: se cae la conexión a la base y el login falla sin que la
+  // contraseña tenga nada que ver. Pasó el 25-ago 23:48 dos veces seguidas.
+  // Sin esta rama se mostraba el texto crudo en inglés.
+  if (
+    m.includes("unexpected_failure") ||
+    m.includes("unhandled server error") ||
+    m.includes("database error") ||
+    m.includes("error finding user")
+  ) {
+    return "Se cayó el servidor un momento. Esperá unos segundos y probá de nuevo — no es tu contraseña.";
+  }
   return msg;
+}
+
+// Las cookies de sesión de @supabase/ssr: `sb-<ref>-auth-token`, partida en
+// `.0`, `.1` cuando el JWT no entra en una sola. Devolvemos nombre+valor de
+// todas para poder detectar que *cambiaron*, no solo que existen.
+function authCookieSnapshot(): string {
+  return document.cookie
+    .split(";")
+    .map((c) => c.trim())
+    .filter((c) => /^sb-.*auth-token(\.\d+)?=/.test(c))
+    .sort()
+    .join("|");
 }
 
 function LoginForm() {
@@ -99,12 +124,19 @@ function LoginForm() {
       const dest = isAdminLogin ? "/admin" : next;
       // La promesa de signInWithPassword puede no resolver por un deadlock
       // conocido del browser client de @supabase/ssr, pero la cookie de
-      // sesión sí se escribe. Detectamos el login exitoso por la aparición
-      // de la cookie y hacemos un redirect de página completa (no depende
-      // de que la promesa resuelva). El rol se revalida en el middleware.
+      // sesión sí se escribe. Detectamos el login exitoso por el cambio de
+      // la cookie y hacemos un redirect de página completa (no depende de
+      // que la promesa resuelva). El rol se revalida en el middleware.
+      //
+      // Comparamos el VALOR, no la presencia: con una contraseña mal puesta
+      // la cookie vieja (sesión vencida, code-verifier de /recuperar) sigue
+      // ahí, y chequear `document.cookie.includes("sb-")` redirigía igual,
+      // tapando el mensaje de error.
+      const antes = authCookieSnapshot();
       let redirected = false;
       const iv = window.setInterval(() => {
-        if (document.cookie.includes("sb-")) {
+        const ahora = authCookieSnapshot();
+        if (ahora && ahora !== antes) {
           redirected = true;
           window.clearInterval(iv);
           window.location.href = dest;

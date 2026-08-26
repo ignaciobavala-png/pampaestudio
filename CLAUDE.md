@@ -251,7 +251,8 @@ está en **`docs/features/backlog-2026-08.md`**. Leerlo antes de seguir.
 
 ### Otros pendientes
 
-- [ ] `SUPABASE_SERVICE_ROLE_KEY` y `CRON_SECRET` en `.env.local` y en Vercel
+- [x] `SUPABASE_SERVICE_ROLE_KEY` y `CRON_SECRET` en `.env.local`; `CRON_SECRET`
+      también cargado en Vercel (26-ago-2026)
 - [ ] SMTP propio (Resend) → destraba la edición de templates de email
 - [ ] Pegar los templates con `token_hash` en Supabase — **bloqueado por el SMTP**:
       el flujo de reseteo ya está hecho en la app, ver `docs/email-templates/README.md`
