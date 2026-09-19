@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { FunnelSteps } from "@/components/nav/funnel-steps";
@@ -12,8 +12,13 @@ import { isValidE164 } from "@/lib/phone";
 
 type Method = "mp" | "card" | "transfer";
 
-export default function PagoPage() {
+function PagoContent() {
   const router = useRouter();
+  const params = useSearchParams();
+  const packName = params.get("name") || "Pack";
+  const packPrice = params.get("price") || "";
+  const packPer = params.get("per") || "";
+  const packCredits = params.get("credits");
   const [step, setStep] = useState(1);
   const [method, setMethod] = useState<Method>("mp");
   const [name, setName] = useState("");
@@ -49,10 +54,12 @@ export default function PagoPage() {
 
         <div className="mb-[18px] flex items-center justify-between rounded-[14px] bg-muted px-4 py-[14px]">
           <div>
-            <div className="text-sm font-semibold">Pack Fusión</div>
-            <div className="mt-0.5 text-xs text-muted-foreground">Todas las disciplinas · 12 créditos mensuales</div>
+            <div className="text-sm font-semibold">Pack {packName}</div>
+            {packCredits && (
+              <div className="mt-0.5 text-xs text-muted-foreground">{packCredits} créditos</div>
+            )}
           </div>
-          <span className="font-serif text-[22px]">$62.000<span className="text-[13px] text-ink-dim font-sans"> / mes</span></span>
+          <span className="font-serif text-[22px]">{packPrice}<span className="text-[13px] text-ink-dim font-sans"> {packPer}</span></span>
         </div>
 
         {/* Step 1: Método de pago */}
@@ -165,12 +172,20 @@ export default function PagoPage() {
 
             <Button className="h-auto w-full rounded-[14px] py-[15px] text-[15px] font-semibold" onClick={() => router.push("/clases")}>
               {method === "mp" && "Pagar con MercadoPago"}
-              {method === "card" && "Pagar $62.000"}
+              {method === "card" && `Pagar ${packPrice}`}
               {method === "transfer" && "Ya transferí"}
             </Button>
           </>
         )}
       </div>
     </AppShell>
+  );
+}
+
+export default function PagoPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-muted-foreground">Cargando...</div>}>
+      <PagoContent />
+    </Suspense>
   );
 }

@@ -155,7 +155,14 @@ export default function HomePage() {
               if (!user) {
                 router.push("/login");
               } else {
-                router.push("/pago");
+                const params = new URLSearchParams({
+                  pack: selected.id,
+                  name: selected.name,
+                  price: selected.price,
+                  per: selected.per,
+                  credits: String(selected.credits),
+                });
+                router.push(`/pago?${params.toString()}`);
               }
             }}
           >
