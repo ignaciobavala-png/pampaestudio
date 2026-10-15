@@ -7,7 +7,7 @@ import { ClassListRow } from "@/components/admin/class-list-row";
 import { ClassDetail } from "@/components/admin/class-detail";
 import { CancelModal } from "@/components/admin/cancel-modal";
 import { ToastProvider, useToast } from "@/components/admin/toast";
-import { fetchAdminDay, updateClassMaxCapacity, cancelClass, adminBookSpot, adminRescheduleBooking } from "./actions";
+import { fetchAdminDay, updateClassMaxCapacity, cancelClass, deleteClassTemplate, adminBookSpot, adminRescheduleBooking } from "./actions";
 import { fetchMonthlyRevenue } from "./clientes/actions";
 import type { AdminClass } from "@/lib/admin-types";
 import { toLocalDateStr } from "@/lib/utils";
@@ -138,6 +138,18 @@ function HoyContent() {
     fetchData();
   }, [cancelTarget, classes, dayIndex, toast, fetchData]);
 
+  const handleDelete = useCallback(async () => {
+    if (selectedIndex === null) return;
+    const cls = classes[selectedIndex];
+    if (!cls) return;
+    const res = await deleteClassTemplate(cls.templateId);
+    toast(res.ok ? "Clase eliminada · reservas futuras canceladas y clases devueltas" : res.error);
+    if (res.ok) {
+      setSelectedIndex(null);
+      fetchData();
+    }
+  }, [selectedIndex, classes, toast, fetchData]);
+
   const handleAddStudent = useCallback(
     async (userId: string) => {
       if (selectedIndex === null) return;
@@ -252,6 +264,7 @@ function HoyContent() {
                 onClose={closeDetail}
                 onMaxChange={handleMaxChange}
                 onCancelClass={openCancel}
+                onDeleteClass={handleDelete}
                 onAddStudent={handleAddStudent}
                 onReschedule={handleReschedule}
                 date={getDateForDay(dayIndex)}

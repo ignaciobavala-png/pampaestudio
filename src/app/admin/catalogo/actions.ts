@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { assertAdmin, getServiceClient } from "@/lib/supabase/admin-guard";
+import { deleteClassTemplate } from "../actions";
 
 /**
  * Catálogos del estudio: profesoras, salas y tipos de clase.
@@ -175,4 +176,98 @@ export async function setCatalogItemActive(
   revalidatePath("/admin/catalogo");
   revalidatePath("/admin/nueva-clase");
   return { ok: true };
+}
+
+export interface CatalogClass {
+  id: string;
+  name: string;
+  /** 0 = lunes. */
+  dayOfWeek: number;
+  timeStart: string;
+  timeEnd: string;
+  recurrence: "weekly" | "once";
+  specificDate: string | null;
+}
+
+/** Las clases activas que usan un instructora / sala / tipo, para reasignarlas. */
+export async function fetchCatalogClasses(kind: CatalogKind, id: string): Promise<CatalogClass[]> {
+  await assertAdmin();
+  const { data } = await getServiceClient()
+    .from("class_templates")
+    .select("id, name, day_of_week, time_start, time_end, recurrence, specific_date")
+    .eq(templateColumn(kind), id)
+    .eq("is_active", true)
+    .order("day_of_week")
+    .order("time_start");
+
+  return (data ?? []).map((t) => ({
+    id: t.id,
+    name: t.name,
+    dayOfWeek: t.day_of_week,
+    timeStart: t.time_start.slice(0, 5),
+    timeEnd: t.time_end.slice(0, 5),
+    recurrence: t.recurrence as "weekly" | "once",
+    specificDate: t.specific_date,
+  }));
+}
+
+/** Pasa una clase (`templateId`) o todas las de `fromId` a otro elemento del catálogo. */
+export async function reassignClasses(
+  kind: CatalogKind,
+  toId: string,
+  target: { templateId: string } | { fromId: string }
+): Promise<CatalogResult & { moved?: number }> {
+  await assertAdmin();
+  const client = getServiceClient();
+
+  const { data: dest } = await client.from(kind).select("id, is_active").eq("id", toId).single();
+  if (!dest?.is_active) return { ok: false, error: "El destino no está disponible" };
+
+  const col = templateColumn(kind);
+  const patch =
+    kind === "teachers" ? { teacher_id: toId } : kind === "rooms" ? { room_id: toId } : { class_type_id: toId };
+  let q = client.from("class_templates").update(patch, { count: "exact" });
+  q = "templateId" in target ? q.eq("id", target.templateId) : q.eq(col, target.fromId).eq("is_active", true);
+  const { error, count } = await q;
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/semana");
+  revalidatePath("/admin/catalogo");
+  return { ok: true, moved: count ?? 0 };
+}
+
+/** Elimina una clase desde el catálogo (ver `deleteClassTemplate`). */
+export async function deleteClassFromCatalog(templateId: string): Promise<CatalogResult> {
+  const res = await deleteClassTemplate(templateId);
+  return res.ok ? { ok: true } : res;
+}
+
+/**
+ * "Quitar": si nunca se usó en ninguna clase (ni archivada) se borra de verdad;
+ * si tiene historia, se desactiva. Con clases activas no se deja.
+ */
+export async function removeCatalogItem(
+  kind: CatalogKind,
+  id: string
+): Promise<CatalogResult & { deleted?: boolean }> {
+  await assertAdmin();
+  const client = getServiceClient();
+  const col = templateColumn(kind);
+
+  const { count: active } = await client
+    .from("class_templates").select("id", { count: "exact", head: true }).eq(col, id).eq("is_active", true);
+  if (active && active > 0) return { ok: false, error: "Todavía tiene clases activas" };
+
+  const { count: any } = await client
+    .from("class_templates").select("id", { count: "exact", head: true }).eq(col, id);
+
+  const { error } = any
+    ? await client.from(kind).update({ is_active: false }).eq("id", id)
+    : await client.from(kind).delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/admin/catalogo");
+  revalidatePath("/admin/nueva-clase");
+  return { ok: true, deleted: !any };
 }

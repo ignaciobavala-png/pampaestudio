@@ -2,7 +2,8 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
-import { getServerSupabase as getSupabase } from "@/lib/supabase/admin-guard";
+import { getServerSupabase as getSupabase, getServiceClient as getSvc } from "@/lib/supabase/admin-guard";
+import { todayInArgentina } from "@/lib/time";
 import type { Database } from "@/types/database";
 import type { AdminClass, ClientOption, Discipline, TemplateOption } from "@/lib/admin-types";
 import {
@@ -190,6 +191,51 @@ export async function cancelClass(
   revalidatePath("/admin");
   const res = result as { credits_restored?: number };
   return { creditsRestored: res?.credits_restored ?? 0 };
+}
+
+/**
+ * Elimina una clase de la grilla. Si ya tuvo reservas no se puede borrar la fila
+ * (bookings.template_id es RESTRICT), así que se archiva (`is_active = false`).
+ * Antes se cancelan las reservas futuras para devolver los créditos.
+ */
+export async function deleteClassTemplate(
+  templateId: string
+): Promise<{ ok: true; archived: boolean } | { ok: false; error: string }> {
+  const supabase = await getSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "No autenticado" };
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  if (profile?.role !== "admin") return { ok: false, error: "Acceso denegado" };
+
+  const svc = getSvc();
+
+  const { data: future } = await svc
+    .from("bookings")
+    .select("date")
+    .eq("template_id", templateId)
+    .gte("date", todayInArgentina())
+    .in("status", ["confirmed", "waitlist"]);
+
+  // admin_cancel_class valida auth.uid(), por eso va con la sesión y no con service_role.
+  for (const date of new Set((future ?? []).map((b) => b.date))) {
+    const { error } = await supabase.rpc("admin_cancel_class", { p_template_id: templateId, p_date: date });
+    if (error) return { ok: false, error: error.message };
+  }
+
+  const { count } = await svc
+    .from("bookings")
+    .select("id", { count: "exact", head: true })
+    .eq("template_id", templateId);
+
+  const archived = (count ?? 0) > 0;
+  const { error } = archived
+    ? await svc.from("class_templates").update({ is_active: false }).eq("id", templateId)
+    : await svc.from("class_templates").delete().eq("id", templateId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/semana");
+  return { ok: true, archived };
 }
 
 function getAdminClient() {

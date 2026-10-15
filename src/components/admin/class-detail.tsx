@@ -14,6 +14,7 @@ interface ClassDetailProps {
   onClose: () => void;
   onMaxChange: (index: number, newMax: number) => void;
   onCancelClass: () => void;
+  onDeleteClass: () => Promise<void>;
   onAddStudent: (userId: string) => Promise<void>;
   onReschedule: (bookingId: string, newTemplateId: string, newDate: string) => Promise<void>;
   index: number;
@@ -21,8 +22,9 @@ interface ClassDetailProps {
   dateLabel: string;
 }
 
-export function ClassDetail({ cls, max, onClose, onMaxChange, onCancelClass, onAddStudent, onReschedule, index, date, dateLabel }: ClassDetailProps) {
+export function ClassDetail({ cls, max, onClose, onMaxChange, onCancelClass, onDeleteClass, onAddStudent, onReschedule, index, date, dateLabel }: ClassDetailProps) {
   const [showAdd, setShowAdd] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [moveTarget, setMoveTarget] = useState<AdminStudent | null>(null);
   const { name, classType, room, teacher, time, end, taken } = cls;
   const free = max - taken;
@@ -73,6 +75,20 @@ export function ClassDetail({ cls, max, onClose, onMaxChange, onCancelClass, onA
             <button onClick={onCancelClass} className="cursor-pointer rounded-[10px] border border-[rgba(26,25,31,.14)] bg-white px-[15px] py-2 text-[12.5px] font-medium text-destructive transition-colors hover:bg-naranja-soft hover:border-red-200">
               Cancelar clase
             </button>
+            {confirmDelete ? (
+              <button
+                onClick={async () => { setConfirmDelete(false); await onDeleteClass(); }}
+                onBlur={() => setConfirmDelete(false)}
+                autoFocus
+                className="cursor-pointer rounded-[10px] border border-red-200 bg-naranja-soft px-[15px] py-2 text-[12.5px] font-semibold text-destructive"
+              >
+                ¿Seguro? Eliminar definitivamente
+              </button>
+            ) : (
+              <button onClick={() => setConfirmDelete(true)} className="cursor-pointer rounded-[10px] border border-[rgba(26,25,31,.14)] bg-white px-[15px] py-2 text-[12.5px] font-medium text-destructive transition-colors hover:bg-naranja-soft hover:border-red-200">
+                Eliminar clase
+              </button>
+            )}
           </div>
         </div>
       </div>
