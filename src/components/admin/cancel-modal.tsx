@@ -50,7 +50,7 @@ export function CancelModal({ open, className, taken, time, onClose, onConfirm }
           </div>
           <div className="mb-[13px]">
             <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-dim">Mensaje (opcional)</div>
-            <textarea className="h-[65px] w-full resize-none rounded-[10px] border border-[rgba(26,25,31,.14)] bg-[#F7F7F6] px-3 py-2.5 font-sans text-[13px] text-foreground outline-none transition-colors placeholder:text-ink-dim focus:border-primary focus:bg-white" placeholder="Ej: Creditos devueltos automaticamente..." />
+            <textarea className="h-[65px] w-full resize-none rounded-[10px] border border-[rgba(26,25,31,.14)] bg-[#F7F7F6] px-3 py-2.5 font-sans text-[13px] text-foreground outline-none transition-colors placeholder:text-ink-dim focus:border-primary focus:bg-white" placeholder="Ej: Clases devueltas automáticamente..." />
           </div>
         </div>
         <div className="flex gap-[7px] border-t border-[rgba(26,25,31,.085)] px-5 py-[13px]">

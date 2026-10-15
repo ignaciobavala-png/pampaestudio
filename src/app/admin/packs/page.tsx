@@ -94,7 +94,7 @@ function PackForm({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className={labelCls}>Créditos (clases)</label>
+          <label className={labelCls}>Clases del pack</label>
           <input
             type="number"
             min={1}
@@ -382,7 +382,7 @@ export default function PacksPage() {
                   )}
                 </div>
                 <div className="mt-0.5 text-[12px] text-ink-dim">
-                  {formatArs(p.priceArs)} · {p.credits} crédito{p.credits === 1 ? "" : "s"} ·{" "}
+                  {formatArs(p.priceArs)} · {p.credits} clase{p.credits === 1 ? "" : "s"} ·{" "}
                   {p.durationDays ? `${p.durationDays} días` : "sin vencimiento"} ·{" "}
                   {p.classTypeIds.length === 0
                     ? "sin tipos"

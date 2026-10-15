@@ -5,7 +5,7 @@ import type { Database } from "@/types/database";
 export const runtime = "nodejs";
 
 // Cron diario: marca packs vencidos y genera avisos in-app
-// (pack por vencer <=3 días, créditos bajos <=1). Ver run_pack_alerts().
+// (pack por vencer <=3 días, clases bajas <=1). Ver run_pack_alerts().
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {

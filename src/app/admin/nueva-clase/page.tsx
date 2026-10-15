@@ -307,7 +307,7 @@ export default function NuevaClasePage() {
               <span>
                 <span className="block text-sm text-foreground">Clase suelta</span>
                 <span className="mt-0.5 block text-[11px] text-ink-dim">
-                  No se paga con créditos de un pack: se cobra aparte. Marcala solo
+                  No se paga con las clases de un pack: se cobra aparte. Marcala solo
                   si su tipo sí está dentro de algún pack y esta clase es la excepción.
                 </span>
               </span>

@@ -159,7 +159,7 @@ function ClientDetailModalContent({
           <div className="grid grid-cols-3 gap-2.5 mb-4">
             {[
               { val: client.classes, label: "Clases totales" },
-              { val: client.credits, label: "Créditos" },
+              { val: client.credits, label: "Clases disponibles" },
               { val: Math.round(client.classes / 6), label: "Meses activa" },
             ].map(({ val, label }) => (
               <div key={label} className="rounded-[12px] bg-[#EFEFED] p-3 text-center">
@@ -228,7 +228,7 @@ function ClientDetailModalContent({
                   >
                     <div>
                       <span className="text-sm font-medium">{p.name}</span>
-                      <span className="ml-2 text-xs text-ink-dim">{p.credits} créditos</span>
+                      <span className="ml-2 text-xs text-ink-dim">{p.credits} {p.credits === 1 ? "clase" : "clases"}</span>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-[13px] font-serif">

@@ -56,7 +56,7 @@ function validate(data: PackFormData): string | null {
   if (!Number.isFinite(data.priceArs) || data.priceArs < 0)
     return "El precio no puede ser negativo";
   if (!Number.isInteger(data.credits) || data.credits < 1)
-    return "El pack tiene que tener al menos 1 crédito";
+    return "El pack tiene que tener al menos 1 clase";
   if (
     data.durationDays !== null &&
     (!Number.isInteger(data.durationDays) || data.durationDays < 1)

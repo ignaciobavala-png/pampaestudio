@@ -25,7 +25,7 @@ function ConfirmacionContent() {
     ["Horario", time],
     ["Instructora", teacher],
     ["Sala", room],
-    ...(!isWL && credits !== null && credits !== "" ? [["Créditos restantes", credits]] : []),
+    ...(!isWL && credits !== null && credits !== "" ? [["Clases restantes", credits]] : []),
     ...(isWL && pos ? [["Posición en lista", `#${pos}`]] : []),
     // Clase suelta: no salió de un pack, queda a pagar en el estudio.
     ...(pagar ? [["A abonar", `$${Number(pagar).toLocaleString("es-AR")}`]] : []),

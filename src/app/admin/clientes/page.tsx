@@ -8,7 +8,7 @@ import { fetchClients } from "./actions";
 import type { AdminClient } from "@/lib/admin-types";
 
 function exportCSV(clients: AdminClient[]) {
-  const headers = ["Nombre", "Email", "Teléfono", "Pack", "Créditos", "Clases", "Miembro desde"];
+  const headers = ["Nombre", "Email", "Teléfono", "Pack", "Clases disponibles", "Clases totales", "Miembro desde"];
   const rows = clients.map((c) => [
     c.name,
     c.email,

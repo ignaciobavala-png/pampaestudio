@@ -40,7 +40,7 @@ const STEPS: TourStep[] = [
     target: "class-list",
     badge: "Tocá una clase",
     title: "Detalle y cupo en vivo",
-    body: "Al abrir una clase ves las alumnas anotadas, la lista de espera, podés editar el cupo y cancelar la clase (devuelve créditos automáticamente).",
+    body: "Al abrir una clase ves las alumnas anotadas, la lista de espera, podés editar el cupo y cancelar la clase (devuelve las clases automáticamente).",
   },
   {
     route: "/admin/semana",
@@ -59,7 +59,7 @@ const STEPS: TourStep[] = [
     target: "client-grid",
     badge: "Abrí una alumna",
     title: "Aprobar y asignar packs",
-    body: "Desde la ficha de cada alumna la aprobás, le asignás o cambiás el pack de créditos, y ves su historial.",
+    body: "Desde la ficha de cada alumna la aprobás, le asignás o cambiás el pack de clases, y ves su historial.",
   },
   {
     route: "/admin/nueva-clase",

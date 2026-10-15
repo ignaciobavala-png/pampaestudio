@@ -121,13 +121,13 @@ export default function AgendaPage() {
   }, [notice]);
 
   const handleCancel = async (b: Booking) => {
-    // Ventana de 2h: si la clase confirmada empieza en menos de 2h, se pierde el crédito.
+    // Ventana de 2h: si la clase confirmada empieza en menos de 2h, se pierde la clase.
     const startMs = classStartMs(b.date, b.class_templates?.time_start);
     const withinWindow = b.status === "confirmed" && isWithinCancelWindow(startMs, readNow());
 
     if (withinWindow) {
       const ok = window.confirm(
-        "Faltan menos de 2 horas para la clase. Si cancelás ahora, perdés la clase: no se te devuelve el crédito.\n\n¿Querés cancelar igual?"
+        "Faltan menos de 2 horas para la clase. Si cancelás ahora, perdés la clase: no se te devuelve la clase.\n\n¿Querés cancelar igual?"
       );
       if (!ok) return;
     }
@@ -141,7 +141,7 @@ export default function AgendaPage() {
     if (res.error) {
       setNotice({ kind: "warn", text: res.error });
     } else if (res.was_confirmed && res.credit_refunded) {
-      setNotice({ kind: "ok", text: "Reserva cancelada · crédito devuelto" });
+      setNotice({ kind: "ok", text: "Reserva cancelada · clase devuelta" });
     } else if (res.was_confirmed) {
       setNotice({ kind: "warn", text: "Reserva cancelada · perdiste la clase (menos de 2h)" });
     } else {
@@ -249,7 +249,7 @@ export default function AgendaPage() {
       {userPack && (
         <div className="mx-4 mb-2 rounded-[14px] border border-border bg-card px-4 py-[13px] flex items-center justify-between">
           <div>
-            <div className="text-xs text-muted-foreground">Créditos disponibles</div>
+            <div className="text-xs text-muted-foreground">Clases disponibles</div>
             <div className="text-[11px] text-ink-dim mt-px">
               {userPack.packName} · ${(userPack.packPrice / 100).toLocaleString("es-AR")}
             </div>

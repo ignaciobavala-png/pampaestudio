@@ -134,7 +134,7 @@ function HoyContent() {
     const date = getDateForDay(dayIndex);
     const { creditsRestored } = await cancelClass(cls.name, dayIndex, date);
     const restored = creditsRestored || cls.taken;
-    toast(`Clase cancelada · ${restored} créditos devueltos · notificadas`);
+    toast(`Clase cancelada · ${restored} clases devueltas · notificadas`);
     fetchData();
   }, [cancelTarget, classes, dayIndex, toast, fetchData]);
 

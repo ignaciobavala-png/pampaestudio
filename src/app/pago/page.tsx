@@ -56,7 +56,7 @@ function PagoContent() {
           <div>
             <div className="text-sm font-semibold">Pack {packName}</div>
             {packCredits && (
-              <div className="mt-0.5 text-xs text-muted-foreground">{packCredits} créditos</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">{packCredits} {packCredits === "1" ? "clase" : "clases"}</div>
             )}
           </div>
           <span className="font-serif text-[22px]">{packPrice}<span className="text-[13px] text-ink-dim font-sans"> {packPer}</span></span>

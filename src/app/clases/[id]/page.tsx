@@ -119,7 +119,7 @@ function DetalleContent() {
       }
       if ((rec.confirmed ?? 0) + (rec.waitlist ?? 0) === 0) {
         setBooking("error");
-        setBookingError("No se pudo reservar ninguna fecha (sin créditos o ya reservadas).");
+        setBookingError("No se pudo reservar ninguna fecha (sin clases disponibles o ya reservadas).");
         return;
       }
 

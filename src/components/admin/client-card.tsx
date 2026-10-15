@@ -32,7 +32,7 @@ export function ClientCard({ client, onClick }: ClientCardProps) {
           <span className="font-medium flex items-center gap-1.5">
             {client.pack}
             <span className="rounded-[100px] bg-bordo-surface px-2 py-0.5 text-[10px] font-semibold text-primary">
-              {client.credits} creditos
+              {client.credits} {client.credits === 1 ? "clase" : "clases"}
             </span>
           </span>
         </div>

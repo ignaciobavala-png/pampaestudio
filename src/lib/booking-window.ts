@@ -1,7 +1,7 @@
 /**
  * Ventana de cancelación: espejo de la regla que aplica `cancel_booking` en la
  * base. Si la clase confirmada empieza en menos de 2 horas, cancelar no
- * devuelve el crédito.
+ * devuelve la clase.
  */
 export const CANCEL_WINDOW_MS = 2 * 60 * 60 * 1000;
 

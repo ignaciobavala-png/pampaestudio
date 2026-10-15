@@ -245,7 +245,7 @@ export async function adminBookSpot(
   }
   return {
     ok: true,
-    message: res.credit_used ? "Agregada a la clase · 1 crédito descontado" : "Agregada a la clase · sin crédito",
+    message: res.credit_used ? "Agregada a la clase · 1 clase descontada" : "Agregada a la clase · sin descontar clase",
   };
 }
 
