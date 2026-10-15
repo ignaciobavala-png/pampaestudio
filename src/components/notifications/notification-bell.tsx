@@ -13,6 +13,7 @@ const TYPE_ICON: Record<string, string> = {
   pack_expiring: "⏳",
   low_credits: "⚠️",
   class_cancelled: "❌",
+  payment_approved: "✅",
 };
 
 function timeAgo(iso: string): string {

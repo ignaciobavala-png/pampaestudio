@@ -306,6 +306,96 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          amount: number
+          booking_id: string | null
+          collected_by: string | null
+          created_at: string
+          id: string
+          method: string
+          mp_payment_id: string | null
+          mp_preference_id: string | null
+          notes: string | null
+          pack_id: string | null
+          paid_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          user_pack_id: string | null
+        }
+        Insert: {
+          amount: number
+          booking_id?: string | null
+          collected_by?: string | null
+          created_at?: string
+          id?: string
+          method: string
+          mp_payment_id?: string | null
+          mp_preference_id?: string | null
+          notes?: string | null
+          pack_id?: string | null
+          paid_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          user_pack_id?: string | null
+        }
+        Update: {
+          amount?: number
+          booking_id?: string | null
+          collected_by?: string | null
+          created_at?: string
+          id?: string
+          method?: string
+          mp_payment_id?: string | null
+          mp_preference_id?: string | null
+          notes?: string | null
+          pack_id?: string | null
+          paid_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          user_pack_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_collected_by_fkey"
+            columns: ["collected_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "packs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_user_pack_id_fkey"
+            columns: ["user_pack_id"]
+            isOneToOne: false
+            referencedRelation: "user_packs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -469,6 +559,15 @@ export type Database = {
           p_booking_id: string
           p_new_date: string
           p_new_template_id: string
+        }
+        Returns: Json
+      }
+      apply_mp_payment: {
+        Args: {
+          p_amount: number
+          p_mp_payment_id: string
+          p_mp_status: string
+          p_payment_id: string
         }
         Returns: Json
       }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
@@ -9,12 +9,14 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { isValidE164 } from "@/lib/phone";
+import { startMercadoPagoCheckout } from "./actions";
 
 type Method = "mp" | "card" | "transfer";
 
 function PagoContent() {
   const router = useRouter();
   const params = useSearchParams();
+  const packId = params.get("pack");
   const packName = params.get("name") || "Pack";
   const packPrice = params.get("price") || "";
   const packPer = params.get("per") || "";
@@ -24,12 +26,31 @@ function PagoContent() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [paying, startPaying] = useTransition();
+  const [payError, setPayError] = useState<string | null>(null);
 
   const methods = [
     { id: "mp" as const, icon: "💙", label: "Mercado Pago", sub: "Débito, crédito o saldo MP" },
     { id: "card" as const, icon: "💳", label: "Tarjeta de crédito", sub: "Visa, Mastercard, Amex" },
     { id: "transfer" as const, icon: "🏦", label: "Transferencia bancaria", sub: "Acreditación en 24hs" },
   ];
+
+  function handlePay() {
+    if (method !== "mp") {
+      router.push("/clases");
+      return;
+    }
+    if (!packId) {
+      setPayError("No encontramos el pack. Volvé a elegirlo desde el inicio.");
+      return;
+    }
+    setPayError(null);
+    startPaying(async () => {
+      const res = await startMercadoPagoCheckout(packId);
+      if ("error" in res) setPayError(res.error);
+      else window.location.assign(res.url);
+    });
+  }
 
   const contactValid = name.trim().length >= 2 && email.includes("@") && isValidE164(phone);
 
@@ -170,8 +191,12 @@ function PagoContent() {
               </div>
             )}
 
-            <Button className="h-auto w-full rounded-[14px] py-[15px] text-[15px] font-semibold" onClick={() => router.push("/clases")}>
-              {method === "mp" && "Pagar con MercadoPago"}
+            {payError && (
+              <p role="alert" className="mb-[10px] text-center text-[12.5px] text-destructive">{payError}</p>
+            )}
+
+            <Button className="h-auto w-full rounded-[14px] py-[15px] text-[15px] font-semibold" disabled={paying} onClick={handlePay}>
+              {method === "mp" && (paying ? "Conectando con Mercado Pago…" : "Pagar con MercadoPago")}
               {method === "card" && `Pagar ${packPrice}`}
               {method === "transfer" && "Ya transferí"}
             </Button>

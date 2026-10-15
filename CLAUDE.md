@@ -74,6 +74,9 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=    ← auth.admin.listUsers() y operaciones admin
 CRON_SECRET=                  ← keep-alive de Supabase
+MERCADOPAGO_ACCESS_TOKEN=     ← Checkout Pro (solo el token; la public key no se usa)
+MERCADOPAGO_WEBHOOK_SECRET=   ← opcional, valida x-signature
+NEXT_PUBLIC_SITE_URL=         ← opcional, origen público (si falta se deduce del request)
 ```
 
 ## Schema
@@ -101,6 +104,10 @@ CRON_SECRET=                  ← keep-alive de Supabase
 - `user_packs`: user_id, pack_id, credits_remaining, status
   (active/expired/cancelled/frozen), starts_at, expires_at, frozen_at
 - `notifications`: user_id, type, title, body, data, read_at
+- `payments`: user_id, pack_id / booking_id, user_pack_id, **amount (centavos)**,
+  method (mercadopago/cash/transfer), status (pending/approved/rejected/
+  cancelled/refunded/**review**), mp_preference_id, mp_payment_id (unique),
+  collected_by. Solo lectura desde la app: todo se escribe con service_role.
 
 ### Trampas del schema
 
@@ -142,7 +149,28 @@ preservar el comportamiento anterior.
 | `admin_cancel_class(template_id, date)` | Solo service_role | REVOKE de authenticated aplicado. |
 | `is_admin()` | RLS policies | SECURITY DEFINER para evitar recursión. |
 | `count_confirmed(template_id, date)` | Público | Cupo en tiempo real. |
+| `apply_mp_payment(payment_id, mp_payment_id, mp_status, amount)` | Solo service_role | Aplica el resultado de un pago de MP. **Idempotente** (lock de fila): el pack nace una sola vez. Monto distinto → `review`; evento viejo no deshace un `approved`; reembolso cancela el pack. |
 | `run_pack_alerts()` | Cron | Vence packs y genera avisos. Compara con `now()` sobre timestamptz: son instantes absolutos, ahí no hay bug de TZ. |
+
+## Mercado Pago (15-oct-2026)
+
+```
+/pago → startMercadoPagoCheckout(packId)   precio sale de la base, no del cliente
+      → fila payments (pending) + preferencia (external_reference = payments.id)
+      → Checkout Pro → vuelve a /pago/resultado?ref=...&payment_id=...
+webhook  /api/mercadopago/webhook ─┐
+retorno  refreshPaymentStatus ─────┴→ syncMercadoPagoPayment → apply_mp_payment
+```
+
+- El webhook **nunca confía en el body**: toma el id, consulta `GET /v1/payments/{id}`
+  y actúa sobre esa respuesta. La `notification_url` viaja en cada preferencia, no
+  hace falta configurarla en el panel (solo para generar `MERCADOPAGO_WEBHOOK_SECRET`).
+- Con `http://localhost` la preferencia sale **sin** `auto_return` ni
+  `notification_url` (MP los rechaza). Ahí la acreditación la dispara la pantalla
+  de retorno con el `payment_id` que agrega MP.
+- Comprar un pack **no vence** los packs activos de la alumna (a diferencia de
+  `assignPack` del admin): `book_spot` ya gasta primero el que vence antes.
+- Probar siempre con credenciales `TEST-...` y un usuario comprador de prueba.
 
 ## Rutas
 
@@ -256,8 +284,12 @@ está en **`docs/features/backlog-2026-08.md`**. Leerlo antes de seguir.
 - [ ] SMTP propio (Resend) → destraba la edición de templates de email
 - [ ] Pegar los templates con `token_hash` en Supabase — **bloqueado por el SMTP**:
       el flujo de reseteo ya está hecho en la app, ver `docs/email-templates/README.md`
-- [ ] Integración Mercado Pago → **después** de `payments` y `settings`: sin
-      registro de pagos ni datos bancarios cargados es construir sobre arena
+- [x] Integración Mercado Pago de **packs**: código, tabla `payments` y
+      `apply_mp_payment` listos y probados en SQL. **Falta probar contra MP** con
+      las credenciales de prueba, y cargarlas en Vercel.
+- [ ] Mercado Pago para **clases sueltas** (`payments.booking_id` ya está previsto)
+- [ ] El método "Tarjeta de crédito" de `/pago` es un formulario de maqueta que no
+      cobra nada, y "Transferencia" muestra un CBU de ejemplo
 - [ ] Una clase suelta se puede reservar pero **no hay forma de cobrarla**
       (queda `pending`); el flujo de cobro es la fase D
 - [ ] El admin no tiene dónde ver quién debe plata
