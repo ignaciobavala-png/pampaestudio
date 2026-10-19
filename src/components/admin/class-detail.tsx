@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import Link from "next/link";
 import { CapacityStepper } from "@/components/admin/capacity-stepper";
 import { StudentRow } from "@/components/admin/student-row";
 import { WaitlistRow } from "@/components/admin/waitlist-row";
@@ -69,9 +70,12 @@ export function ClassDetail({ cls, max, onClose, onMaxChange, onCancelClass, onD
             <button className="cursor-pointer rounded-[10px] bg-primary px-[15px] py-2 text-[12.5px] font-medium text-white border-none transition-colors hover:bg-bordo-hover shadow-[inset_0_1px_0_rgba(255,255,255,.22)]">
               Enviar recordatorio
             </button>
-            <button className="cursor-pointer rounded-[10px] border border-[rgba(26,25,31,.14)] bg-white px-[15px] py-2 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[#EFEFED]">
-              Duplicar
-            </button>
+            <Link
+              href={`/admin/nueva-clase?editar=${cls.templateId}`}
+              className="cursor-pointer rounded-[10px] border border-[rgba(26,25,31,.14)] bg-white px-[15px] py-2 text-[12.5px] font-medium text-foreground transition-colors hover:bg-[#EFEFED]"
+            >
+              Editar clase
+            </Link>
             <button onClick={onCancelClass} className="cursor-pointer rounded-[10px] border border-[rgba(26,25,31,.14)] bg-white px-[15px] py-2 text-[12.5px] font-medium text-destructive transition-colors hover:bg-naranja-soft hover:border-red-200">
               Cancelar clase
             </button>

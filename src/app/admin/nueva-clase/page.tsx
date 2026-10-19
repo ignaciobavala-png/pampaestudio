@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   createClassTemplate,
+  fetchClassForEdit,
   fetchNewClassCatalogs,
+  updateClassTemplate,
   type NewClassCatalogs,
+  type NewClassData,
 } from "./actions";
 
-/** Las clases del estudio duran 50 minutos; la grilla arranca a las 7 y corta cada 50'. */
+/** Las clases del estudio duran 50 minutos y arrancan siempre en punto. */
 const DEFAULT_DURATION_MIN = 50;
 const GRID_START_MIN = 7 * 60;
 const GRID_END_MIN = 21 * 60;
@@ -25,10 +28,10 @@ function timeToMinutes(value: string): number {
   return h * 60 + m;
 }
 
-/** Horarios de inicio posibles: cada 50 minutos desde las 07:00. */
+/** Horarios de inicio posibles: en punto, de 07:00 a 20:00. */
 const START_SLOTS: string[] = (() => {
   const slots: string[] = [];
-  for (let t = GRID_START_MIN; t + DEFAULT_DURATION_MIN <= GRID_END_MIN; t += DEFAULT_DURATION_MIN) {
+  for (let t = GRID_START_MIN; t + DEFAULT_DURATION_MIN <= GRID_END_MIN; t += 60) {
     slots.push(minutesToTime(t));
   }
   return slots;
@@ -55,8 +58,9 @@ const labelCls =
 const fieldCls =
   "w-full rounded-[11px] border border-[rgba(26,25,31,.14)] bg-[#F7F7F6] px-[13px] py-[11px] font-sans text-sm text-foreground outline-none transition-colors focus:border-primary focus:bg-white";
 
-export default function NuevaClasePage() {
+function ClaseForm() {
   const router = useRouter();
+  const editId = useSearchParams().get("editar");
 
   const [catalogs, setCatalogs] = useState<NewClassCatalogs | null>(null);
   const [name, setName] = useState("");
@@ -67,7 +71,6 @@ export default function NuevaClasePage() {
   const [dayOfWeek, setDayOfWeek] = useState(0);
   const [specificDate, setSpecificDate] = useState("");
   const [timeStart, setTimeStart] = useState("09:00");
-  const [duration, setDuration] = useState(DEFAULT_DURATION_MIN);
   const [maxCapacity, setMaxCapacity] = useState(10);
   const [isStandalone, setIsStandalone] = useState(false);
   const [priceArs, setPriceArs] = useState(0);
@@ -91,7 +94,31 @@ export default function NuevaClasePage() {
     };
   }, []);
 
-  const timeEnd = minutesToTime(timeToMinutes(timeStart) + duration);
+  useEffect(() => {
+    if (!editId) return;
+    let cancelled = false;
+    fetchClassForEdit(editId).then((c) => {
+      if (cancelled || !c) return;
+      setName(c.name);
+      setTeacherId(c.teacher_id);
+      setRoomId(c.room_id);
+      setClassTypeId(c.class_type_id);
+      setRepeatsWeekly(c.recurrence === "weekly");
+      setDayOfWeek(c.day_of_week);
+      setSpecificDate(c.specific_date ?? "");
+      // Si quedó una hora vieja que no es en punto, se redondea hacia abajo.
+      setTimeStart(`${c.time_start.slice(0, 2)}:00`);
+      setMaxCapacity(c.max_capacity);
+      setIsStandalone(c.is_standalone);
+      setPriceArs((c.price ?? 0) / 100);
+      setDescription(c.description ?? "");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [editId]);
+
+  const timeEnd = minutesToTime(timeToMinutes(timeStart) + DEFAULT_DURATION_MIN);
 
   const handleSubmit = async () => {
     if (!name.trim()) {
@@ -102,10 +129,6 @@ export default function NuevaClasePage() {
       setError("Falta elegir instructora, sala o tipo de clase.");
       return;
     }
-    if (!Number.isFinite(duration) || duration <= 0) {
-      setError("La duración tiene que ser mayor a cero.");
-      return;
-    }
     if (!repeatsWeekly && !specificDate) {
       setError("Una clase que no se repite necesita una fecha.");
       return;
@@ -114,7 +137,7 @@ export default function NuevaClasePage() {
     setLoading(true);
     setError(null);
 
-    const result = await createClassTemplate({
+    const payload: NewClassData = {
       name: name.trim(),
       teacher_id: teacherId,
       room_id: roomId,
@@ -131,7 +154,10 @@ export default function NuevaClasePage() {
       is_standalone: isStandalone,
       // packs.price y class_templates.price van en centavos.
       price: priceArs > 0 ? Math.round(priceArs * 100) : null,
-    });
+    };
+    const result = editId
+      ? await updateClassTemplate(editId, payload)
+      : await createClassTemplate(payload);
 
     if (result.error) {
       setError(result.error);
@@ -152,9 +178,13 @@ export default function NuevaClasePage() {
   return (
     <div>
       <div className="mb-5">
-        <h1 className="font-serif text-[32px] tracking-[-0.02em]">Nueva clase</h1>
+        <h1 className="font-serif text-[32px] tracking-[-0.02em]">
+          {editId ? "Editar clase" : "Nueva clase"}
+        </h1>
         <p className="mt-1 text-[13px] text-ink-dim">
-          Completá los datos para agregar una clase al calendario.
+          {editId
+            ? "Cambiá lo que haga falta y guardá. Las reservas existentes se mantienen."
+            : "Completá los datos para agregar una clase al calendario."}
         </p>
       </div>
 
@@ -272,16 +302,9 @@ export default function NuevaClasePage() {
 
           <div className="flex flex-col gap-1.5">
             <label className={labelCls}>Duración</label>
-            <input
-              type="number"
-              value={duration}
-              onChange={(e) => setDuration(Number(e.target.value))}
-              min={10}
-              max={180}
-              step={5}
-              className={fieldCls}
-            />
-            <p className="text-[11px] text-ink-dim">Minutos · termina {timeEnd}</p>
+            <p className="py-[11px] text-sm text-foreground">
+              50 min · termina {timeEnd}
+            </p>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -381,10 +404,18 @@ export default function NuevaClasePage() {
             disabled={loading || emptyCatalogs}
             className="flex-[2] cursor-pointer rounded-[11px] border-none bg-primary py-[11px] text-[13px] font-semibold text-white transition-colors hover:bg-[#3A0313] disabled:opacity-50"
           >
-            {loading ? "Creando..." : "Crear clase"}
+            {loading ? "Guardando..." : editId ? "Guardar cambios" : "Crear clase"}
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function NuevaClasePage() {
+  return (
+    <Suspense>
+      <ClaseForm />
+    </Suspense>
   );
 }

@@ -77,3 +77,55 @@ export async function createClassTemplate(data: NewClassData) {
   revalidatePath("/admin/semana");
   return { error: null };
 }
+
+/** Datos de una clase existente para precargar el formulario de edición. */
+export async function fetchClassForEdit(id: string): Promise<NewClassData | null> {
+  await assertAdmin();
+  const { data } = await getServiceClient()
+    .from("class_templates")
+    .select(
+      "name, teacher_id, room_id, class_type_id, day_of_week, time_start, time_end, max_capacity, description, recurrence, specific_date, is_standalone, price"
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    name: data.name,
+    teacher_id: data.teacher_id ?? "",
+    room_id: data.room_id ?? "",
+    class_type_id: data.class_type_id ?? "",
+    day_of_week: data.day_of_week,
+    time_start: data.time_start.slice(0, 5),
+    time_end: data.time_end.slice(0, 5),
+    max_capacity: data.max_capacity,
+    description: data.description,
+    recurrence: data.recurrence as "weekly" | "once",
+    specific_date: data.specific_date,
+    is_standalone: data.is_standalone,
+    price: data.price,
+  };
+}
+
+/** Cambia horario, instructora, sala, cupo, etc. de una clase existente. */
+export async function updateClassTemplate(id: string, data: NewClassData) {
+  await assertAdmin();
+
+  if (data.recurrence === "once" && !data.specific_date) {
+    return { error: "Una clase única necesita una fecha." };
+  }
+
+  const { error } = await getServiceClient()
+    .from("class_templates")
+    .update({
+      ...data,
+      specific_date: data.recurrence === "once" ? data.specific_date : null,
+    })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/semana");
+  revalidatePath("/clases");
+  return { error: null };
+}
