@@ -12,6 +12,7 @@ const tabs = [
   { id: "clientes", label: "Clientes", href: "/admin/clientes" },
   { id: "packs", label: "Packs", href: "/admin/packs" },
   { id: "catalogo", label: "Catálogo", href: "/admin/catalogo" },
+  { id: "pagos", label: "Cobros", href: "/admin/pagos" },
   { id: "nueva", label: "Nueva clase", href: "/admin/nueva-clase" },
 ];
 

@@ -170,6 +170,12 @@ retorno  refreshPaymentStatus ─────┴→ syncMercadoPagoPayment → a
   de retorno con el `payment_id` que agrega MP.
 - Comprar un pack **no vence** los packs activos de la alumna (a diferencia de
   `assignPack` del admin): `book_spot` ya gasta primero el que vence antes.
+- **Las credenciales las carga la dueña en `/admin/pagos`** (27-oct-2026) y se
+  guardan en `app_secrets` (solo service_role, sin policies). Tienen prioridad
+  sobre `MERCADOPAGO_ACCESS_TOKEN` / `MERCADOPAGO_WEBHOOK_SECRET`, que quedan de
+  respaldo. Se leen en cada request (`getMpSecret`), sin deploy. El Access Token
+  se valida contra `GET /users/me` antes de guardarse y su valor nunca vuelve al
+  navegador (solo los últimos 4).
 - Probar siempre con credenciales `TEST-...` y un usuario comprador de prueba.
 
 ## Rutas

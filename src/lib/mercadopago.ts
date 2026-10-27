@@ -1,21 +1,62 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { getServiceClient } from "@/lib/supabase/admin-guard";
 
 /**
  * Cliente mínimo de Mercado Pago (Checkout Pro) para el servidor.
  *
  * Solo hace falta el Access Token: el redirect a Checkout Pro no usa la public
  * key. Nunca importar este módulo desde un componente cliente.
+ *
+ * Las credenciales las carga la dueña desde `/admin/pagos` (tabla `app_secrets`)
+ * y tienen prioridad sobre las variables de entorno, que quedan de respaldo.
  */
 
 const MP_API = "https://api.mercadopago.com";
 
-export function isMercadoPagoConfigured(): boolean {
-  return Boolean(process.env.MERCADOPAGO_ACCESS_TOKEN);
+export type MpSecretKey = "mercadopago_access_token" | "mercadopago_webhook_secret";
+
+const ENV_FALLBACK: Record<MpSecretKey, string> = {
+  mercadopago_access_token: "MERCADOPAGO_ACCESS_TOKEN",
+  mercadopago_webhook_secret: "MERCADOPAGO_WEBHOOK_SECRET",
+};
+
+/** Credencial cargada en el panel; si no hay, la variable de entorno. */
+export async function getMpSecret(key: MpSecretKey): Promise<string | null> {
+  const { data } = await getServiceClient()
+    .from("app_secrets")
+    .select("value")
+    .eq("key", key)
+    .maybeSingle();
+  return data?.value || process.env[ENV_FALLBACK[key]] || null;
+}
+
+export async function isMercadoPagoConfigured(): Promise<boolean> {
+  return Boolean(await getMpSecret("mercadopago_access_token"));
+}
+
+/** Quién es el dueño de un Access Token. Sirve para validarlo antes de guardarlo. */
+export async function fetchMpAccount(
+  token: string
+): Promise<{ ok: true; nickname: string; email: string | null } | { ok: false; error: string }> {
+  try {
+    const res = await fetch(`${MP_API}/users/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (res.status === 401 || res.status === 403) {
+      return { ok: false, error: "Mercado Pago no reconoce ese Access Token." };
+    }
+    if (!res.ok) return { ok: false, error: `Mercado Pago respondió ${res.status}. Probá de nuevo en un rato.` };
+    const me = (await res.json()) as { nickname?: string; email?: string };
+    return { ok: true, nickname: me.nickname ?? "cuenta sin nombre", email: me.email ?? null };
+  } catch {
+    return { ok: false, error: "No pudimos conectar con Mercado Pago." };
+  }
 }
 
 async function mpFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
-  if (!token) throw new Error("Falta MERCADOPAGO_ACCESS_TOKEN");
+  const token = await getMpSecret("mercadopago_access_token");
+  if (!token) throw new Error("Falta el Access Token de Mercado Pago");
 
   const res = await fetch(`${MP_API}${path}`, {
     ...init,
@@ -102,12 +143,12 @@ export function getPayment(id: string | number): Promise<MpPayment> {
  * `MERCADOPAGO_WEBHOOK_SECRET`: el webhook igual vuelve a consultar el pago a la
  * API, así que la firma es endurecimiento, no lo que habilita la acreditación.
  */
-export function verifyWebhookSignature(opts: {
+export async function verifyWebhookSignature(opts: {
   signatureHeader: string | null;
   requestId: string | null;
   dataId: string | null;
-}): boolean {
-  const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
+}): Promise<boolean> {
+  const secret = await getMpSecret("mercadopago_webhook_secret");
   if (!secret) return true;
   const { signatureHeader, requestId, dataId } = opts;
   if (!signatureHeader || !dataId) return false;

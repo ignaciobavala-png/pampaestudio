@@ -27,7 +27,7 @@ export async function startMercadoPagoCheckout(
   packId: string
 ): Promise<{ url: string } | { error: string }> {
   if (!UUID.test(packId)) return { error: "Pack inválido." };
-  if (!isMercadoPagoConfigured()) {
+  if (!(await isMercadoPagoConfigured())) {
     return { error: "El pago con Mercado Pago todavía no está disponible." };
   }
 

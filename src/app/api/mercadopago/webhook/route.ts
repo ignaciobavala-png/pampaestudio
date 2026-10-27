@@ -22,11 +22,11 @@ export async function POST(request: NextRequest) {
   const type = url.searchParams.get("type") ?? url.searchParams.get("topic") ?? body.type;
 
   if (
-    !verifyWebhookSignature({
+    !(await verifyWebhookSignature({
       signatureHeader: request.headers.get("x-signature"),
       requestId: request.headers.get("x-request-id"),
       dataId: url.searchParams.get("data.id") ?? dataId,
-    })
+    }))
   ) {
     return NextResponse.json({ error: "firma inválida" }, { status: 401 });
   }
